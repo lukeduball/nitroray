@@ -18,13 +18,14 @@ pub fn run() {
     let sphere = Sphere::new(Vec3::new(0.0, 0.0, 8.0), 1.0);
 
 
+    let field_of_view_component = f32::tan(camera.get_field_of_view() / 2.0);
     for x in 0..WIDTH {
         for y in 0..HEIGHT {
             //pixel screen gets the center of each pixel and divides to put it in normalized coordinates between 0 and 1
             let pixel_screen_x = (x as f32 + 0.5) / WIDTH as f32;
             let pixel_screen_y = (y as f32 + 0.5) / HEIGHT as f32;
-            let pixel_camera_x = (2.0 * pixel_screen_x - 1.0) * aspect_ratio * camera.get_field_of_view();
-            let pixel_camera_y = (1.0 - 2.0 * pixel_screen_y) * camera.get_field_of_view();
+            let pixel_camera_x = (2.0 * pixel_screen_x - 1.0) * aspect_ratio * field_of_view_component;
+            let pixel_camera_y = (1.0 - 2.0 * pixel_screen_y) * field_of_view_component;
             let pixel_coordinate = Vec3::new(pixel_camera_x, pixel_camera_y, 1.0);
             let world_coordinate = camera.convert_view_space_to_world_space(pixel_coordinate);
             let ray_direction = (world_coordinate - camera.get_origin()).normalize();
