@@ -1,0 +1,16 @@
+[package]
+name = "nitroray"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "nitro-ray-app"
+path = "src/main.rs"
+
+[dependencies]
+xenofrost = { path = "../xenofrost" }
+
+[dependencies.image]
+version = "0.25"
+default-features = false
+features = ["png", "jpeg"]
