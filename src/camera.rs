@@ -5,9 +5,9 @@ use crate::math::get_direction_vector_from_yaw_and_pitch;
 pub(crate) struct Camera {
     origin: Vec3,
     field_of_view: f32,
-    view_matrix: Mat4,
+    _view_matrix: Mat4,
     inverse_view_matrix: Mat4,
-    projection_matrix: Mat4
+    _projection_matrix: Mat4
 }
 
 impl Camera {
@@ -19,9 +19,9 @@ impl Camera {
         Self {
             origin,
             field_of_view,
-            view_matrix,
+            _view_matrix: view_matrix,
             inverse_view_matrix,
-            projection_matrix
+            _projection_matrix: projection_matrix
         }
     }
 

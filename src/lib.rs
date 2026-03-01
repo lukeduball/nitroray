@@ -1,12 +1,47 @@
 use image::{Rgb, RgbImage};
 use xenofrost::core::math::Vec3;
 
-use crate::{camera::Camera, geometry::{Intersectable, Sphere}, ray::Ray};
+use crate::{camera::Camera, geometry::{Intersectable, Sphere}, light::{DirectionalLight, Light}, ray::Ray};
 
 mod camera;
 mod geometry;
+mod light;
 mod math;
 mod ray;
+
+fn get_color_from_raycast(ray: &Ray, object_list: &Vec<Box<dyn Intersectable>>, light_list: &Vec<Box<dyn Light>>) -> Vec3 {
+    let background_color = Vec3::new(0.35, 0.35, 0.35);
+
+    let (collision_object, distance_parameter) = find_ray_intersection_with_scene(ray, object_list);
+    if let Some(object) = collision_object {
+        let intersection_point = ray.get_origin() + ray.get_direction() * distance_parameter;
+        let normal = object.get_normal_at_intersection(&intersection_point);
+
+        let color_at_intersection = object.get_color();
+
+        for light in light_list {
+            let (light_direction, attenuated_light, _light_distance_parameter) = light.get_light_direction_intensity_and_distance_parameter(intersection_point);
+            let diffuse_color = color_at_intersection * attenuated_light * f32::max(0.0, normal.dot(-light_direction));
+            return diffuse_color;
+        }
+    }
+
+    background_color
+}
+
+fn find_ray_intersection_with_scene<'a>(ray: &'a Ray, object_list: &'a Vec<Box<dyn Intersectable>>) -> (Option<&'a Box<dyn Intersectable>>, f32) {
+    let mut min_distance_parameter = f32::INFINITY;
+    let mut collision_object: Option<&Box<dyn Intersectable>> = None;
+    for object in object_list {
+        let result = object.intersect(ray);
+        if result.does_intersect && result.intersection_parameter < min_distance_parameter {
+            min_distance_parameter = result.intersection_parameter;
+            collision_object = Some(object);
+        }
+    }
+    
+    (collision_object, min_distance_parameter)
+}
 
 pub fn run() {
     const WIDTH: usize = 480;
@@ -15,7 +50,15 @@ pub fn run() {
 
     let aspect_ratio = WIDTH as f32 / HEIGHT as f32;
     let camera = Camera::new(Vec3::splat(0.0), 0.0, 0.0, 90.0, aspect_ratio);
-    let sphere = Sphere::new(Vec3::new(0.0, 0.0, 8.0), 1.0);
+
+    let mut light_list: Vec<Box<dyn Light>> = Vec::new();
+    light_list.push(Box::new(DirectionalLight::new(Vec3::new(-1.0, -1.0, 1.0).normalize(), Vec3::new(1.0, 1.0, 1.0), 5.0)));
+
+    let mut object_list: Vec<Box<dyn Intersectable>> = Vec::new();
+    object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 8.0), 1.0, Vec3::new(1.0, 0.0, 0.0))));
+    object_list.push(Box::new(Sphere::new(Vec3::new(1.5, 0.0, 7.0), 1.0, Vec3::new(0.0, 1.0, 0.0))));
+    object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 3.0, 6.0), 1.0, Vec3::new(0.0, 0.0, 1.0))));
+    object_list.push(Box::new(Sphere::new(Vec3::new(-4.0, 0.0, 5.0), 1.0, Vec3::new(1.0, 0.0, 1.0))));
 
 
     let field_of_view_component = f32::tan(camera.get_field_of_view() / 2.0);
@@ -31,9 +74,7 @@ pub fn run() {
             let ray_direction = (world_coordinate - camera.get_origin()).normalize();
             let ray = Ray::new(world_coordinate, ray_direction);
 
-            if sphere.intersect(ray) {
-                framebuffer[x+y*WIDTH] = Vec3::new(1.0, 0.0, 0.0);
-            }
+            framebuffer[x+y*WIDTH] = get_color_from_raycast(&ray, &object_list, &light_list);
         }
     }
 
