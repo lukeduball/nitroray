@@ -1,3 +1,5 @@
+use std::f32::EPSILON;
+
 use image::{Rgb, RgbImage};
 use xenofrost::core::math::Vec3;
 
@@ -20,9 +22,18 @@ fn get_color_from_raycast(ray: &Ray, object_list: &Vec<Box<dyn Intersectable>>, 
         let color_at_intersection = object.get_color();
 
         for light in light_list {
+
             let (light_direction, attenuated_light, _light_distance_parameter) = light.get_light_direction_intensity_and_distance_parameter(intersection_point);
-            let diffuse_color = color_at_intersection * attenuated_light * f32::max(0.0, normal.dot(-light_direction));
-            return diffuse_color;
+
+            let shadow_ray = Ray::new(intersection_point - light_direction * 0.0001, -light_direction);
+            let (shadow_collision_object, _shadow_parameter) = find_ray_intersection_with_scene(&shadow_ray, object_list);
+            if shadow_collision_object.is_none() {
+                let diffuse_color = color_at_intersection * attenuated_light * f32::max(0.0, normal.dot(-light_direction));
+                return diffuse_color;
+            }
+            else {
+                return Vec3::new(0.0, 0.0, 0.0);
+            }
         }
     }
 
