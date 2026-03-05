@@ -1,9 +1,7 @@
-use std::f32::EPSILON;
-
 use image::{Rgb, RgbImage};
 use xenofrost::core::math::Vec3;
 
-use crate::{camera::Camera, geometry::{Intersectable, Sphere}, light::{DirectionalLight, Light}, ray::Ray};
+use crate::{camera::Camera, geometry::{Intersectable, Sphere, Triangle}, light::{DirectionalLight, Light}, ray::Ray};
 
 mod camera;
 mod geometry;
@@ -25,7 +23,7 @@ fn get_color_from_raycast(ray: &Ray, object_list: &Vec<Box<dyn Intersectable>>, 
 
             let (light_direction, attenuated_light, _light_distance_parameter) = light.get_light_direction_intensity_and_distance_parameter(intersection_point);
 
-            let shadow_ray = Ray::new(intersection_point - light_direction * 0.0001, -light_direction);
+            let shadow_ray = Ray::new(intersection_point - light_direction * math::NITRORAY_FLOAT_EPSILON, -light_direction);
             let (shadow_collision_object, _shadow_parameter) = find_ray_intersection_with_scene(&shadow_ray, object_list);
             if shadow_collision_object.is_none() {
                 let diffuse_color = color_at_intersection * attenuated_light * f32::max(0.0, normal.dot(-light_direction));
@@ -63,14 +61,15 @@ pub fn run() {
     let camera = Camera::new(Vec3::splat(0.0), 0.0, 0.0, 90.0, aspect_ratio);
 
     let mut light_list: Vec<Box<dyn Light>> = Vec::new();
-    light_list.push(Box::new(DirectionalLight::new(Vec3::new(-1.0, -1.0, 1.0).normalize(), Vec3::new(1.0, 1.0, 1.0), 5.0)));
+    light_list.push(Box::new(DirectionalLight::new(Vec3::new(-1.0, -1.0, 1.0).normalize(), Vec3::new(1.0, 1.0, 1.0), 1.0)));
 
     let mut object_list: Vec<Box<dyn Intersectable>> = Vec::new();
-    object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 8.0), 1.0, Vec3::new(1.0, 0.0, 0.0))));
-    object_list.push(Box::new(Sphere::new(Vec3::new(1.5, 0.0, 7.0), 1.0, Vec3::new(0.0, 1.0, 0.0))));
+    object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 5.0), 1.0, Vec3::new(1.0, 0.0, 0.0))));
+    object_list.push(Box::new(Sphere::new(Vec3::new(1.5, 0.0, 4.0), 1.0, Vec3::new(0.0, 1.0, 0.0))));
     object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 3.0, 6.0), 1.0, Vec3::new(0.0, 0.0, 1.0))));
     object_list.push(Box::new(Sphere::new(Vec3::new(-4.0, 0.0, 5.0), 1.0, Vec3::new(1.0, 0.0, 1.0))));
-
+    object_list.push(Box::new(Triangle::new(Vec3::new(-4.0, -1.0, 2.0), Vec3::new(4.0, -1.0, 10.0), Vec3::new(4.0, -1.0, 2.0), Vec3::new(1.0, 1.0, 0.0))));
+    object_list.push(Box::new(Triangle::new(Vec3::new(-4.0, -1.0, 2.0), Vec3::new(-4.0, -1.0, 10.0), Vec3::new(4.0, -1.0, 10.0), Vec3::new(1.0, 1.0, 0.0))));
 
     let field_of_view_component = f32::tan(camera.get_field_of_view() / 2.0);
     for x in 0..WIDTH {
