@@ -1,12 +1,15 @@
 use image::{Rgb, RgbImage};
 use xenofrost::core::math::Vec3;
 
-use crate::{camera::Camera, geometry::{Intersectable, Sphere, Triangle}, light::{DirectionalLight, Light}, ray::Ray};
+use crate::{camera::Camera, geometry::{Sphere, Triangle}, light::{DirectionalLight, Light}, object::Intersectable, ray::Ray};
 
 mod camera;
 mod geometry;
 mod light;
 mod math;
+mod mesh;
+mod model;
+mod object;
 mod ray;
 
 fn get_color_from_raycast(ray: &Ray, object_list: &Vec<Box<dyn Intersectable>>, light_list: &Vec<Box<dyn Light>>) -> Vec3 {

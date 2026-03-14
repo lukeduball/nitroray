@@ -10,6 +10,9 @@ path = "src/main.rs"
 [dependencies]
 xenofrost = { path = "../xenofrost" }
 
+[dependencies.gltf]
+version = "1"
+
 [dependencies.image]
 version = "0.25"
 default-features = false
