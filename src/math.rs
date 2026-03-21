@@ -2,6 +2,30 @@ use xenofrost::core::math::Vec3;
 
 pub(crate) const NITRORAY_FLOAT_EPSILON: f32 = 0.0001;
 
+pub(crate) struct Transform3d {
+    translation: Vec3,
+    pitch: f32,
+    yaw: f32,
+    roll: f32,
+    scale: Vec3
+}
+
+impl Transform3d {
+    pub(crate) fn new(translation: Vec3, pitch: f32, yaw: f32, roll: f32, scale: Vec3) -> Self {
+        Self {
+            translation,
+            pitch,
+            yaw,
+            roll,
+            scale
+        }
+    }
+
+    pub(crate) fn from_translation(translation: Vec3) -> Self {
+        Self::new(translation, 0.0, 0.0, 0.0, Vec3::splat(1.0))
+    }
+}
+
 pub(crate) fn get_direction_vector_from_yaw_and_pitch(yaw: f32, pitch: f32) -> Vec3 {
     let x = f32::sin(yaw.to_radians()) * f32::cos(pitch.to_radians());
     let y = f32::sin(pitch.to_radians());

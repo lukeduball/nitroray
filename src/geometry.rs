@@ -2,7 +2,7 @@ use core::f32;
 
 use xenofrost::core::math::Vec3;
 
-use crate::{math::are_floats_equal, object::{Intersectable, IntersectionInfo}, ray::Ray};
+use crate::{math::are_floats_equal, object::{FaceIndex, Intersectable, IntersectionInfo}, ray::Ray};
 
 pub(crate) struct Sphere {
     origin: Vec3,
@@ -35,14 +35,14 @@ impl Intersectable for Sphere {
 
         // Ray is outside of the sphere and pointing away from the sphere
         if outside_sphere && closest_approach_parameter < 0.0 {
-            return IntersectionInfo { does_intersect: false, intersection_parameter: f32::INFINITY }
+            return IntersectionInfo { does_intersect: false, intersection_parameter: f32::INFINITY, mesh_info: None }
         }
 
         // Finds the distance from the center of the sphere to the point on the ray at which the closest intersection can occur
         let half_chord_distance_squared = (self.radius*self.radius) - distance_squared + (closest_approach_parameter * closest_approach_parameter);
 
         if outside_sphere && half_chord_distance_squared < 0.0 {
-            return IntersectionInfo { does_intersect: false, intersection_parameter: f32::INFINITY }
+            return IntersectionInfo { does_intersect: false, intersection_parameter: f32::INFINITY, mesh_info: None }
         }
 
         let intersection_parameter = if outside_sphere {
@@ -51,10 +51,10 @@ impl Intersectable for Sphere {
             closest_approach_parameter + half_chord_distance_squared.sqrt()
         };
 
-        IntersectionInfo { does_intersect: true, intersection_parameter }
+        IntersectionInfo { does_intersect: true, intersection_parameter, mesh_info: None }
     }
     
-    fn get_normal_at_intersection(&self, intersection_point: &Vec3) -> Vec3 {
+    fn get_normal_at_intersection(&self, intersection_point: &Vec3, _mesh_info: Option<FaceIndex>) -> Vec3 {
         let normal = (intersection_point - self.origin).normalize();
 
         normal
@@ -84,7 +84,7 @@ impl Triangle {
 
         //A determinant of zero indicates the ray and triangle are parallel
         if are_floats_equal(determinant, 0.0) {
-            return IntersectionInfo { does_intersect: false, intersection_parameter: f32::INFINITY }
+            return IntersectionInfo { does_intersect: false, intersection_parameter: f32::INFINITY, mesh_info: None }
         }
 
         let inverse_determinant = 1.0 / determinant;
@@ -95,7 +95,7 @@ impl Triangle {
 
         if u < 0.0 || u > 1.0 {
             //The intersection point with the plane is outside of the triangle
-            return IntersectionInfo { does_intersect: false, intersection_parameter: f32::INFINITY }
+            return IntersectionInfo { does_intersect: false, intersection_parameter: f32::INFINITY, mesh_info: None }
         }
 
         //Find the normalized v coordinate by performing the triple scalar product with the origin to v1, side_v1_v2, and the direction vector of the ray
@@ -104,7 +104,7 @@ impl Triangle {
 
         if v < 0.0 || v + u > 1.0 {
             //The intersection point with the plane is outside of the triangle
-            return IntersectionInfo { does_intersect: false, intersection_parameter: f32::INFINITY }
+            return IntersectionInfo { does_intersect: false, intersection_parameter: f32::INFINITY, mesh_info: None }
         }
 
         //Find the intersection parameter distance of the ray by performing the triple scalar product with origin to v1, side_v1_v2, and side_v1_v3
@@ -112,10 +112,10 @@ impl Triangle {
 
         if intersection_parameter < 0.0 {
             //The ray is facing away from the triangle so there is no intersection
-            return IntersectionInfo { does_intersect: false, intersection_parameter: f32::INFINITY }
+            return IntersectionInfo { does_intersect: false, intersection_parameter: f32::INFINITY, mesh_info: None }
         }
         
-        IntersectionInfo { does_intersect: true, intersection_parameter: intersection_parameter }
+        IntersectionInfo { does_intersect: true, intersection_parameter: intersection_parameter, mesh_info: None }
     } 
 }
 
@@ -128,7 +128,7 @@ impl Intersectable for Triangle {
         self.color
     }
 
-    fn get_normal_at_intersection(&self, _intersection_point: &Vec3) -> Vec3 {
+    fn get_normal_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: Option<FaceIndex>) -> Vec3 {
         ((self.vertices[1] - self.vertices[0]).cross(self.vertices[2] - self.vertices[0])).normalize()
     }
 }

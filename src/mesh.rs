@@ -1,4 +1,8 @@
+use core::f32;
+
 use xenofrost::core::math::{Vec2, Vec3};
+
+use crate::{geometry::Triangle, object::{FaceIndex, IntersectionInfo}, ray::Ray};
 
 struct Face {
     indices: [u32; 3],
@@ -59,6 +63,44 @@ impl Mesh {
             vertices: vertices.unwrap_or(Vec::new()),
             texture_coords: texture_coords.unwrap_or(Vec::new()),
             normals,
+        }
+    }
+
+    pub(crate) fn intersect(&self, local_ray: &Ray) -> IntersectionInfo {
+        let mut does_intersect = false;
+        let mut intersection_parameter = f32::INFINITY;
+        let mut face_index = None;
+
+        for (index, face) in self.faces.iter().enumerate() {
+            let vertex1 = self.vertices[face.indices[0] as usize];
+            let vertex2 = self.vertices[face.indices[1] as usize];
+            let vertex3 = self.vertices[face.indices[2] as usize];
+            let intersection_info = Triangle::intersect_triangle(&local_ray, &vertex1, &vertex2, &vertex3);
+            if intersection_info.does_intersect && intersection_info.intersection_parameter < intersection_parameter {
+                does_intersect = true;
+                intersection_parameter = intersection_info.intersection_parameter;
+                face_index = Some(FaceIndex {
+                    mesh_index: 0,
+                    face_index: index as u32
+                });
+            }
+        }
+
+        IntersectionInfo { does_intersect, intersection_parameter, mesh_info: face_index }
+    }
+
+    pub(crate) fn get_normals_of_face(&self, face_index: u32) -> Vec3 {
+        let indices = self.faces[face_index as usize].indices;
+        match &self.normals  {
+            Some(normals_vec) => {
+                ((normals_vec[indices[0] as usize] + normals_vec[indices[1] as usize] + normals_vec[indices[2] as usize]) / 3.0).normalize()
+            },
+            None => {
+                let vertex1 = self.vertices[indices[0] as usize];
+                let vertex2 = self.vertices[indices[1] as usize];
+                let vertex3 = self.vertices[indices[2] as usize];
+                (vertex2 - vertex1).cross(vertex3 - vertex1)
+            }
         }
     }
 }
