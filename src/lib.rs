@@ -3,7 +3,7 @@ use std::rc::Rc;
 use image::{Rgb, RgbImage};
 use xenofrost::core::math::Vec3;
 
-use crate::{camera::Camera, geometry::{Sphere, Triangle}, light::{DirectionalLight, Light}, math::Transform3d, model::Model, object::{FaceIndex, Intersectable, ModelObject}, ray::Ray};
+use crate::{camera::Camera, geometry::Sphere, light::{DirectionalLight, Light}, math::Transform3d, model::Model, object::{FaceIndex, Intersectable, ModelObject}, ray::Ray};
 
 mod camera;
 mod geometry;
@@ -65,7 +65,7 @@ pub fn run() {
     let mut framebuffer = vec![Vec3::new(0.0, 0.0, 0.0); WIDTH*HEIGHT];
 
     let aspect_ratio = WIDTH as f32 / HEIGHT as f32;
-    let camera = Camera::new(Vec3::new(0.0, 2.0, 0.0), 0.0, -90.0, 90.0, aspect_ratio);
+    let camera = Camera::new(Vec3::new(0.0, 0.0, 0.0), 0.0, 0.0, 90.0, aspect_ratio);
 
     let plane_model = Rc::new(Model::load_model("res/models/plane.gltf"));
 
@@ -77,9 +77,11 @@ pub fn run() {
     object_list.push(Box::new(Sphere::new(Vec3::new(1.5, 0.0, 4.0), 1.0, Vec3::new(0.0, 1.0, 0.0))));
     object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 3.0, 6.0), 1.0, Vec3::new(0.0, 0.0, 1.0))));
     object_list.push(Box::new(Sphere::new(Vec3::new(-4.0, 0.0, 5.0), 1.0, Vec3::new(1.0, 0.0, 1.0))));
-    //object_list.push(Box::new(Triangle::new(Vec3::new(-4.0, -1.0, 2.0), Vec3::new(4.0, -1.0, 10.0), Vec3::new(4.0, -1.0, 2.0), Vec3::new(1.0, 1.0, 0.0))));
-    //object_list.push(Box::new(Triangle::new(Vec3::new(-4.0, -1.0, 2.0), Vec3::new(-4.0, -1.0, 10.0), Vec3::new(4.0, -1.0, 10.0), Vec3::new(1.0, 1.0, 0.0))));
-    object_list.push(Box::new(ModelObject::new(Transform3d::from_translation(Vec3::new(0.0, 0.0, 0.0)), Vec3::new(1.0, 1.0, 0.0), plane_model.clone())));
+    object_list.push(Box::new(ModelObject::new(
+        Transform3d::new(Vec3::new(0.0, -1.0, 4.0), 0.0, 0.0, 0.0, Vec3::splat(2.0)), 
+        Vec3::new(1.0, 1.0, 0.0), 
+        plane_model.clone())
+    ));
 
     let field_of_view_component = f32::tan(camera.get_field_of_view() / 2.0);
     for x in 0..WIDTH {

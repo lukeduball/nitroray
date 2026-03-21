@@ -1,4 +1,4 @@
-use xenofrost::core::math::Vec3;
+use xenofrost::core::math::{EulerRot, Quat, Vec3};
 
 pub(crate) const NITRORAY_FLOAT_EPSILON: f32 = 0.0001;
 
@@ -23,6 +23,18 @@ impl Transform3d {
 
     pub(crate) fn from_translation(translation: Vec3) -> Self {
         Self::new(translation, 0.0, 0.0, 0.0, Vec3::splat(1.0))
+    }
+
+    pub(crate) fn get_translation(&self) -> Vec3 {
+        self.translation
+    }
+
+    pub(crate) fn get_rotation_quaternion(&self) -> Quat {
+        Quat::from_euler(EulerRot::YXZ, self.yaw.to_radians(), self.pitch.to_radians(), self.roll.to_radians())
+    }
+
+    pub(crate) fn get_scale(&self) -> Vec3 {
+        self.scale
     }
 }
 

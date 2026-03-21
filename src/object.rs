@@ -21,11 +21,6 @@ pub(crate) trait Intersectable {
     fn get_normal_at_intersection(&self, intersection_point: &Vec3, mesh_info: Option<FaceIndex>) -> Vec3;
 }
 
-pub(crate) trait Object {
-    fn get_world_to_local_transform(&self) -> Mat4;
-    fn get_local_to_world_transform(&self) -> Mat4;
-}
-
 pub(crate) struct ModelObject {
     transform: Transform3d,
     color: Vec3,
@@ -44,7 +39,17 @@ impl ModelObject {
 
 impl Intersectable for ModelObject {
     fn intersect(&self, ray: &Ray) -> IntersectionInfo {
-        self.model.intersect(ray)
+        let transformation_matrix = Mat4::from_scale_rotation_translation(self.transform.get_scale(), self.transform.get_rotation_quaternion(), self.transform.get_translation());
+        let local_ray = ray.convert_ray_to_another_space(&transformation_matrix.inverse());
+
+        let local_intersection_info = self.model.intersect(&local_ray);
+
+        let world_ray_parameter = local_ray.convert_parameter_to_another_space(local_intersection_info.intersection_parameter, ray, &transformation_matrix);
+        IntersectionInfo { 
+            does_intersect: local_intersection_info.does_intersect, 
+            intersection_parameter: world_ray_parameter, 
+            mesh_info: local_intersection_info.mesh_info 
+        }
     }
 
     fn get_color(&self) -> Vec3 {
