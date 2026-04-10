@@ -3,11 +3,12 @@ use std::rc::Rc;
 use image::{Rgb, RgbImage};
 use xenofrost::core::math::Vec3;
 
-use crate::{camera::Camera, geometry::Sphere, light::{DirectionalLight, Light}, math::Transform3d, model::Model, object::{FaceIndex, Intersectable, ModelObject}, ray::Ray};
+use crate::{camera::Camera, geometry::Sphere, light::{DirectionalLight, Light}, material::Material, math::Transform3d, model::Model, object::{FaceIndex, Intersectable, ModelObject}, ray::Ray};
 
 mod camera;
 mod geometry;
 mod light;
+mod material;
 mod math;
 mod mesh;
 mod model;
@@ -20,24 +21,32 @@ fn get_color_from_raycast(ray: &Ray, object_list: &Vec<Box<dyn Intersectable>>, 
     let (collision_object, distance_parameter, mesh_info) = find_ray_intersection_with_scene(ray, object_list);
     if let Some(object) = collision_object {
         let intersection_point = ray.get_origin() + ray.get_direction() * distance_parameter;
-        let normal = object.get_normal_at_intersection(&intersection_point, mesh_info);
 
-        let color_at_intersection = object.get_color();
+        let material_type = object.get_material_at_intersection(&intersection_point, &mesh_info).get_material_type();
 
-        for light in light_list {
+        match material_type {
+            material::MaterialType::Phong { diffuse_component, specular_component, power_component } => {
+                let normal = object.get_normal_at_intersection(&intersection_point, &mesh_info);
+                let color_at_intersection = object.get_color_at_intersection(&intersection_point, &mesh_info);
 
-            let (light_direction, attenuated_light, _light_distance_parameter) = light.get_light_direction_intensity_and_distance_parameter(intersection_point);
+                for light in light_list {
 
-            let shadow_ray = Ray::new(intersection_point - light_direction * math::NITRORAY_FLOAT_EPSILON, -light_direction);
-            let (shadow_collision_object, _shadow_parameter, _mesh_info) = find_ray_intersection_with_scene(&shadow_ray, object_list);
-            if shadow_collision_object.is_none() {
-                let diffuse_color = color_at_intersection * attenuated_light * f32::max(0.0, normal.dot(-light_direction));
-                return diffuse_color;
-            }
-            else {
-                return Vec3::new(0.0, 0.0, 0.0);
-            }
-        }
+                    let (light_direction, attenuated_light, _light_distance_parameter) = light.get_light_direction_intensity_and_distance_parameter(intersection_point);
+
+                    let shadow_ray = Ray::new(intersection_point - light_direction * math::NITRORAY_FLOAT_EPSILON, -light_direction);
+                    let (shadow_collision_object, _shadow_parameter, _mesh_info) = find_ray_intersection_with_scene(&shadow_ray, object_list);
+                    if shadow_collision_object.is_none() {
+                        let diffuse_color = color_at_intersection * attenuated_light * f32::max(0.0, normal.dot(-light_direction));
+                        return diffuse_color;
+                    }
+                    else {
+                        return Vec3::new(0.0, 0.0, 0.0);
+                    }
+                }
+            },
+            material::MaterialType::Reflect => todo!(),
+            material::MaterialType::ReflectRefract { refraction_component } => todo!(),
+        };
     }
 
     background_color
@@ -72,14 +81,20 @@ pub fn run() {
     let mut light_list: Vec<Box<dyn Light>> = Vec::new();
     light_list.push(Box::new(DirectionalLight::new(Vec3::new(-1.0, -1.0, 1.0).normalize(), Vec3::new(1.0, 1.0, 1.0), 1.0)));
 
+    let red_material = Material::new(Vec3::new(1.0, 0.0, 0.0), material::MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 });
+    let green_material = Material::new(Vec3::new(0.0, 1.0, 0.0), material::MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 });
+    let blue_material = Material::new(Vec3::new(0.0, 0.0, 1.0), material::MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 });
+    let purple_material = Material::new(Vec3::new(1.0, 0.0, 1.0), material::MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 });
+    let yellow_material = Material::new(Vec3::new(1.0, 1.0, 0.0), material::MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 });
+
     let mut object_list: Vec<Box<dyn Intersectable>> = Vec::new();
-    object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 5.0), 1.0, Vec3::new(1.0, 0.0, 0.0))));
-    object_list.push(Box::new(Sphere::new(Vec3::new(1.5, 0.0, 4.0), 1.0, Vec3::new(0.0, 1.0, 0.0))));
-    object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 3.0, 6.0), 1.0, Vec3::new(0.0, 0.0, 1.0))));
-    object_list.push(Box::new(Sphere::new(Vec3::new(-4.0, 0.0, 5.0), 1.0, Vec3::new(1.0, 0.0, 1.0))));
+    object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 5.0), 1.0, red_material)));
+    object_list.push(Box::new(Sphere::new(Vec3::new(1.5, 0.0, 4.0), 1.0, green_material)));
+    object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 3.0, 6.0), 1.0, blue_material)));
+    object_list.push(Box::new(Sphere::new(Vec3::new(-4.0, 0.0, 5.0), 1.0, purple_material)));
     object_list.push(Box::new(ModelObject::new(
         Transform3d::new(Vec3::new(0.0, -1.0, 4.0), 0.0, 0.0, 0.0, Vec3::splat(2.0)), 
-        Vec3::new(1.0, 1.0, 0.0), 
+        yellow_material, 
         plane_model.clone())
     ));
 

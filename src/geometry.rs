@@ -1,30 +1,26 @@
 use core::f32;
 
-use xenofrost::core::math::Vec3;
+use xenofrost::core::math::{Vec2, Vec3};
 
-use crate::{math::are_floats_equal, object::{FaceIndex, Intersectable, IntersectionInfo}, ray::Ray};
+use crate::{material::Material, math::are_floats_equal, object::{FaceIndex, Intersectable, IntersectionInfo}, ray::Ray};
 
 pub(crate) struct Sphere {
     origin: Vec3,
     radius: f32,
-    color: Vec3
+    material: Material
 }
 
 impl Sphere {
-    pub(crate) fn new(origin: Vec3, radius: f32, color: Vec3) -> Self {
+    pub(crate) fn new(origin: Vec3, radius: f32, material: Material) -> Self {
         Self {
             origin,
             radius,
-            color
+            material
         }
     }
 }
 
 impl Intersectable for Sphere {
-    fn get_color(&self) -> Vec3 {
-        self.color
-    }
-
     fn intersect(&self, ray: &Ray) -> IntersectionInfo {
         let ray_origin_to_sphere_center = self.origin - ray.get_origin();
         let distance_squared = ray_origin_to_sphere_center.dot(ray_origin_to_sphere_center);
@@ -54,23 +50,35 @@ impl Intersectable for Sphere {
         IntersectionInfo { does_intersect: true, intersection_parameter, mesh_info: None }
     }
     
-    fn get_normal_at_intersection(&self, intersection_point: &Vec3, _mesh_info: Option<FaceIndex>) -> Vec3 {
+    fn get_normal_at_intersection(&self, intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Vec3 {
         let normal = (intersection_point - self.origin).normalize();
 
         normal
+    }
+    
+    fn get_texture_coords_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Option<Vec2> {
+        None
+    }
+    
+    fn get_material_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Material {
+        self.material
+    }
+    
+    fn get_color_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Vec3 {
+        self.material.get_base_color()
     }
 }
 
 pub(crate) struct Triangle {
     vertices: [Vec3; 3],
-    color: Vec3
+    material: Material
 }
 
 impl Triangle {
-    pub(crate) fn new(vertex1: Vec3, vertex2: Vec3, vertex3: Vec3, color: Vec3) -> Self {
+    pub(crate) fn new(vertex1: Vec3, vertex2: Vec3, vertex3: Vec3, material: Material) -> Self {
         Self {
             vertices: [vertex1, vertex2, vertex3],
-            color
+            material
         }
     }
 
@@ -124,11 +132,19 @@ impl Intersectable for Triangle {
         Self::intersect_triangle(ray, &self.vertices[0], &self.vertices[1], &self.vertices[2])
     }
 
-    fn get_color(&self) -> Vec3 {
-        self.color
-    }
-
-    fn get_normal_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: Option<FaceIndex>) -> Vec3 {
+    fn get_normal_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Vec3 {
         ((self.vertices[1] - self.vertices[0]).cross(self.vertices[2] - self.vertices[0])).normalize()
+    }
+    
+    fn get_color_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Vec3 {
+        self.material.get_base_color()
+    }
+    
+    fn get_texture_coords_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Option<Vec2> {
+        None
+    }
+    
+    fn get_material_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Material {
+        self.material
     }
 }

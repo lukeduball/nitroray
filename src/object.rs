@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
-use xenofrost::core::math::{Mat4, Vec3};
+use xenofrost::core::math::{Mat4, Vec2, Vec3};
 
-use crate::{math::Transform3d, model::Model, ray::Ray};
+use crate::{material::Material, math::Transform3d, model::Model, ray::Ray};
 
 pub(crate) struct FaceIndex {
     pub(crate) mesh_index: u32,
@@ -17,21 +17,23 @@ pub(crate) struct IntersectionInfo {
 
 pub(crate) trait Intersectable {
     fn intersect(&self, ray: &Ray) -> IntersectionInfo;
-    fn get_color(&self) -> Vec3;
-    fn get_normal_at_intersection(&self, intersection_point: &Vec3, mesh_info: Option<FaceIndex>) -> Vec3;
+    fn get_color_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Vec3;
+    fn get_normal_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Vec3;
+    fn get_texture_coords_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Option<Vec2>;
+    fn get_material_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Material;
 }
 
 pub(crate) struct ModelObject {
     transform: Transform3d,
-    color: Vec3,
+    material: Material,
     model: Rc<Model>,
 }
 
 impl ModelObject {
-    pub(crate) fn new(transform: Transform3d, color: Vec3, model: Rc<Model>) -> Self {
+    pub(crate) fn new(transform: Transform3d, material: Material, model: Rc<Model>) -> Self {
         Self {
             transform,
-            color,
+            material,
             model
         }
     }
@@ -52,12 +54,20 @@ impl Intersectable for ModelObject {
         }
     }
 
-    fn get_color(&self) -> Vec3 {
-        self.color
-    }
-
-    fn get_normal_at_intersection(&self, _intersection_point: &Vec3, mesh_info: Option<FaceIndex>) -> Vec3 {
-        let mesh_face_indices = mesh_info.unwrap();
+    fn get_normal_at_intersection(&self, _intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Vec3 {
+        let mesh_face_indices = mesh_info.as_ref().unwrap();
         self.model.get_normals_from_mesh_face(mesh_face_indices.mesh_index, mesh_face_indices.face_index)
+    }
+    
+    fn get_color_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Vec3 {
+        self.material.get_base_color()
+    }
+    
+    fn get_texture_coords_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Option<Vec2> {
+        None
+    }
+    
+    fn get_material_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Material {
+        self.material
     }
 }
