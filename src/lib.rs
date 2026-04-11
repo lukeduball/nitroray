@@ -15,8 +15,15 @@ mod model;
 mod object;
 mod ray;
 
-fn get_color_from_raycast(ray: &Ray, object_list: &Vec<Box<dyn Intersectable>>, light_list: &Vec<Box<dyn Light>>) -> Vec3 {
-    let background_color = Vec3::new(0.35, 0.35, 0.35);
+const MAX_RAY_DEPTH: u32 = 3;
+const BACKGROUND_COLOR: Vec3 = Vec3::new(0.35, 0.35, 0.35);
+
+fn get_color_from_raycast(ray: &Ray, object_list: &Vec<Box<dyn Intersectable>>, light_list: &Vec<Box<dyn Light>>, depth: u32) -> Vec3 {
+    let mut hit_color = Vec3::new(0.0, 0.0, 0.0);
+
+    if depth > MAX_RAY_DEPTH {
+        return BACKGROUND_COLOR
+    }
 
     let (collision_object, distance_parameter, mesh_info) = find_ray_intersection_with_scene(ray, object_list);
     if let Some(object) = collision_object {
@@ -36,20 +43,23 @@ fn get_color_from_raycast(ray: &Ray, object_list: &Vec<Box<dyn Intersectable>>, 
                     let shadow_ray = Ray::new(intersection_point - light_direction * math::NITRORAY_FLOAT_EPSILON, -light_direction);
                     let (shadow_collision_object, _shadow_parameter, _mesh_info) = find_ray_intersection_with_scene(&shadow_ray, object_list);
                     if shadow_collision_object.is_none() {
-                        let diffuse_color = color_at_intersection * attenuated_light * f32::max(0.0, normal.dot(-light_direction));
-                        return diffuse_color;
-                    }
-                    else {
-                        return Vec3::new(0.0, 0.0, 0.0);
+                        let diffuse = color_at_intersection * attenuated_light * f32::max(0.0, normal.dot(-light_direction));
+
+                        let reflection_vector = (light_direction - 2.0 * light_direction.dot(normal) * normal).normalize();
+                        let specular = attenuated_light * f32::powf(f32::max(0.0, reflection_vector.dot(-ray.get_direction())), power_component);
+
+                        hit_color += diffuse * diffuse_component + specular * specular_component;
                     }
                 }
             },
             material::MaterialType::Reflect => todo!(),
             material::MaterialType::ReflectRefract { refraction_component } => todo!(),
         };
+        
+        return hit_color;
     }
 
-    background_color
+    BACKGROUND_COLOR
 }
 
 fn find_ray_intersection_with_scene<'a>(ray: &'a Ray, object_list: &'a Vec<Box<dyn Intersectable>>) -> (Option<&'a Box<dyn Intersectable>>, f32, Option<FaceIndex>) {
@@ -82,7 +92,7 @@ pub fn run() {
     light_list.push(Box::new(DirectionalLight::new(Vec3::new(-1.0, -1.0, 1.0).normalize(), Vec3::new(1.0, 1.0, 1.0), 1.0)));
 
     let red_material = Material::new(Vec3::new(1.0, 0.0, 0.0), material::MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 });
-    let green_material = Material::new(Vec3::new(0.0, 1.0, 0.0), material::MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 });
+    let green_material = Material::new(Vec3::new(0.0, 1.0, 0.0), material::MaterialType::Phong { diffuse_component: 0.5, specular_component: 0.5, power_component: 0.5 });
     let blue_material = Material::new(Vec3::new(0.0, 0.0, 1.0), material::MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 });
     let purple_material = Material::new(Vec3::new(1.0, 0.0, 1.0), material::MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 });
     let yellow_material = Material::new(Vec3::new(1.0, 1.0, 0.0), material::MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 });
@@ -111,7 +121,7 @@ pub fn run() {
             let ray_direction = (world_coordinate - camera.get_origin()).normalize();
             let ray = Ray::new(world_coordinate, ray_direction);
 
-            framebuffer[x+y*WIDTH] = get_color_from_raycast(&ray, &object_list, &light_list);
+            framebuffer[x+y*WIDTH] = get_color_from_raycast(&ray, &object_list, &light_list, 0);
         }
     }
 
