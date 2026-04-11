@@ -56,7 +56,9 @@ impl Intersectable for ModelObject {
 
     fn get_normal_at_intersection(&self, _intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Vec3 {
         let mesh_face_indices = mesh_info.as_ref().unwrap();
-        self.model.get_normals_from_mesh_face(mesh_face_indices.mesh_index, mesh_face_indices.face_index)
+        let local_normal = self.model.get_normals_from_mesh_face(mesh_face_indices.mesh_index, mesh_face_indices.face_index);
+        let transformation_matrix = Mat4::from_scale_rotation_translation(self.transform.get_scale(), self.transform.get_rotation_quaternion(), self.transform.get_translation());
+        transformation_matrix.transform_vector3(local_normal).normalize()
     }
     
     fn get_color_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Vec3 {
