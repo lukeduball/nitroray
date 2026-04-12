@@ -2,7 +2,7 @@ use core::f32;
 
 use xenofrost::core::math::{Vec2, Vec3};
 
-use crate::{geometry::Triangle, math::AxisAlignedBoundingBox, object::{FaceIndex, IntersectionInfo}, ray::Ray};
+use crate::{data_structure::{Octree, OctreeNode}, geometry::Triangle, math::AxisAlignedBoundingBox, object::{FaceIndex, IntersectionInfo}, ray::Ray};
 
 struct Face {
     indices: [u32; 3],
@@ -13,7 +13,7 @@ pub(crate) struct Mesh {
     vertices: Vec<Vec3>,
     texture_coords: Vec<Vec2>,
     normals: Option<Vec<Vec3>>,
-    axis_aligned_bounding_box: AxisAlignedBoundingBox
+    bounding_octree: Octree<u32>
 }
 
 impl Mesh {
@@ -72,13 +72,34 @@ impl Mesh {
             }
         }
 
+        let vertices = vertices.unwrap_or(Vec::new());
+
+        let mesh_aabb = AxisAlignedBoundingBox::new_from_points(minimum_point.unwrap_or(Vec3::splat(0.0)), maximum_point.unwrap_or(Vec3::splat(0.0)));
+        let bounding_octree = Self::construct_octree(&faces, &vertices, mesh_aabb);
+
         Self {
             faces,
-            vertices: vertices.unwrap_or(Vec::new()),
+            vertices,
             texture_coords: texture_coords.unwrap_or(Vec::new()),
             normals,
-            axis_aligned_bounding_box: AxisAlignedBoundingBox::new_from_points(minimum_point.unwrap_or(Vec3::splat(0.0)), maximum_point.unwrap_or(Vec3::splat(0.0)))
+            bounding_octree: bounding_octree
         }
+    }
+
+    fn construct_octree(faces: &Vec<Face>, vertices: &Vec<Vec3>, mesh_aabb: AxisAlignedBoundingBox) -> Octree<u32> {
+        const MIN_OBJECTS: u32 = 4;
+        const MAX_DEPTH: u32 = 5;
+        
+        //The amount of faces is less than or equal to the minimum number of objects required to create a leaf in the octree so create a leaf node as the root node of the octree
+        let root_node = if faces.len() as u32 <= MIN_OBJECTS {
+            OctreeNode::new_leaf_node(mesh_aabb, (0..faces.len() as u32).collect())
+        } else {
+            let root_branch_node = OctreeNode::new_branch_node(mesh_aabb);
+            //Populate the children of the octree
+            root_branch_node
+        };
+
+        Octree::new(MIN_OBJECTS, MAX_DEPTH, root_node)
     }
 
     pub(crate) fn intersect(&self, local_ray: &Ray) -> IntersectionInfo {
@@ -86,7 +107,7 @@ impl Mesh {
         let mut intersection_parameter = f32::INFINITY;
         let mut face_index = None;
 
-        let (does_aabb_intersect, _) = self.axis_aligned_bounding_box.intersect_ray(local_ray);
+        let (does_aabb_intersect, _) = self.bounding_octree.get_root_axis_aligned_bounding_box().intersect_ray(local_ray);
         
         if does_aabb_intersect {
             for (index, face) in self.faces.iter().enumerate() {

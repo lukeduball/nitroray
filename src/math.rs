@@ -51,6 +51,7 @@ pub(crate) fn are_floats_equal(f1: f32, f2: f32) -> bool {
     (f1 - f2).abs() < NITRORAY_FLOAT_EPSILON
 }
 
+#[derive(Clone, Copy)]
 pub(crate) struct AxisAlignedBoundingBox {
     center: Vec3,
     half_distances: Vec3

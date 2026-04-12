@@ -6,6 +6,7 @@ use xenofrost::core::math::Vec3;
 use crate::{camera::Camera, geometry::Sphere, light::{DirectionalLight, Light}, material::{Material, MaterialType}, math::Transform3d, model::Model, object::{FaceIndex, Intersectable, ModelObject}, ray::Ray};
 
 mod camera;
+mod data_structure;
 mod geometry;
 mod light;
 mod material;
