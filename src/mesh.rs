@@ -2,7 +2,7 @@ use core::f32;
 
 use xenofrost::core::math::{Vec2, Vec3};
 
-use crate::{geometry::Triangle, object::{FaceIndex, IntersectionInfo}, ray::Ray};
+use crate::{geometry::Triangle, math::AxisAlignedBoundingBox, object::{FaceIndex, IntersectionInfo}, ray::Ray};
 
 struct Face {
     indices: [u32; 3],
@@ -13,6 +13,7 @@ pub(crate) struct Mesh {
     vertices: Vec<Vec3>,
     texture_coords: Vec<Vec2>,
     normals: Option<Vec<Vec3>>,
+    axis_aligned_bounding_box: AxisAlignedBoundingBox
 }
 
 impl Mesh {
@@ -21,13 +22,26 @@ impl Mesh {
         let mut texture_coords: Option<Vec<Vec2>> = None;
         let mut normals: Option<Vec<Vec3>> = None;
         let mut faces: Vec<Face> = Vec::new();
+        let mut minimum_point: Option<Vec3> = None;
+        let mut maximum_point: Option<Vec3> = None;
 
         for primitive in mesh.primitives() {
             let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
 
             if let Some(positions) = reader.read_positions() 
             {
-                vertices = Some(positions.map(|vertex| Vec3::new(vertex[0], vertex[1], vertex[2])).collect());
+                let mut min: [f32; 3] = [0.0, 0.0, 0.0];
+                let mut max: [f32; 3] = [0.0, 0.0, 0.0];
+                vertices = Some(positions.map(|vertex| {
+                    for i in 0..3 {
+                        min[i] = min[i].min(vertex[i]);
+                        max[i] = max[i].max(vertex[i]);
+                    }
+                    Vec3::new(vertex[0], vertex[1], vertex[2])
+                }).collect());
+
+                minimum_point = Some(Vec3::from_array(min));
+                maximum_point = Some(Vec3::from_array(max));
             }
 
             if let Some(normals_iter) = reader.read_normals() 
@@ -63,6 +77,7 @@ impl Mesh {
             vertices: vertices.unwrap_or(Vec::new()),
             texture_coords: texture_coords.unwrap_or(Vec::new()),
             normals,
+            axis_aligned_bounding_box: AxisAlignedBoundingBox::new_from_points(minimum_point.unwrap_or(Vec3::splat(0.0)), maximum_point.unwrap_or(Vec3::splat(0.0)))
         }
     }
 
@@ -71,18 +86,22 @@ impl Mesh {
         let mut intersection_parameter = f32::INFINITY;
         let mut face_index = None;
 
-        for (index, face) in self.faces.iter().enumerate() {
-            let vertex1 = self.vertices[face.indices[0] as usize];
-            let vertex2 = self.vertices[face.indices[1] as usize];
-            let vertex3 = self.vertices[face.indices[2] as usize];
-            let intersection_info = Triangle::intersect_triangle(&local_ray, &vertex1, &vertex2, &vertex3);
-            if intersection_info.does_intersect && intersection_info.intersection_parameter < intersection_parameter {
-                does_intersect = true;
-                intersection_parameter = intersection_info.intersection_parameter;
-                face_index = Some(FaceIndex {
-                    mesh_index: 0,
-                    face_index: index as u32
-                });
+        let (does_aabb_intersect, _) = self.axis_aligned_bounding_box.intersect_ray(local_ray);
+        
+        if does_aabb_intersect {
+            for (index, face) in self.faces.iter().enumerate() {
+                let vertex1 = self.vertices[face.indices[0] as usize];
+                let vertex2 = self.vertices[face.indices[1] as usize];
+                let vertex3 = self.vertices[face.indices[2] as usize];
+                let intersection_info = Triangle::intersect_triangle(&local_ray, &vertex1, &vertex2, &vertex3);
+                if intersection_info.does_intersect && intersection_info.intersection_parameter < intersection_parameter {
+                    does_intersect = true;
+                    intersection_parameter = intersection_info.intersection_parameter;
+                    face_index = Some(FaceIndex {
+                        mesh_index: 0,
+                        face_index: index as u32
+                    });
+                }
             }
         }
 
