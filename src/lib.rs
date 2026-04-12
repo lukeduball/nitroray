@@ -19,6 +19,52 @@ const MAX_RAY_DEPTH: u32 = 3;
 const BACKGROUND_COLOR: Vec3 = Vec3::new(0.35, 0.35, 0.35);
 const REFLECTION_DIM_FACTOR: f32 = 0.8;
 
+fn compute_fresnel(incident_direction: &Vec3, normal: &Vec3, refraction_component: f32) -> f32 {
+    let incident_cos = incident_direction.dot(*normal).clamp(-1.0, 1.0);
+    //the current medium refraction component, air has a value of 1
+    let mut current_medium_refraction_component = 1.0;
+    //the next medium of refraction component
+    let mut next_medium_refraction_component = refraction_component;
+
+    // The ray is starting inside the surface so the medium being traveled to and from need to be swapped
+    if incident_cos < 0.0 {
+        std::mem::swap(&mut current_medium_refraction_component, &mut next_medium_refraction_component);
+    }
+
+    let sin_angle_of_refraction = (current_medium_refraction_component / next_medium_refraction_component) * (1.0 - incident_cos*incident_cos).max(0.0).sqrt().min(1.0);
+    let cos_angle_of_refraction = (1.0 - sin_angle_of_refraction*sin_angle_of_refraction).max(0.0).sqrt();
+    let positive_incident_cos = incident_cos.abs();
+
+    let parallel_fresnel = ((next_medium_refraction_component*positive_incident_cos) - (current_medium_refraction_component*cos_angle_of_refraction)) / ((next_medium_refraction_component*positive_incident_cos) + (current_medium_refraction_component*cos_angle_of_refraction));
+    let perpendicular_fresnel = ((next_medium_refraction_component*cos_angle_of_refraction) - (current_medium_refraction_component*positive_incident_cos)) / ((next_medium_refraction_component*cos_angle_of_refraction) + (current_medium_refraction_component*positive_incident_cos));
+
+    (parallel_fresnel * parallel_fresnel + perpendicular_fresnel * perpendicular_fresnel) * 0.5
+}
+
+fn get_refraction_vector(incident_direction: &Vec3, normal: &Vec3, refraction_component: f32) -> Vec3 {
+    let mut incident_normal_cos = incident_direction.dot(*normal).clamp(-1.0, 1.0);
+    
+    //the current medium refraction component, air has a value of 1
+    let mut current_medium_refraction_component = 1.0;
+    //the next medium of refraction component
+    let mut next_medium_refraction_component = refraction_component;
+
+    let mut refraction_normal = *normal;
+    // The ray is starting inside the surface so the medium being traveled to and from need to be swapped
+    if incident_normal_cos < 0.0 {
+        incident_normal_cos = -incident_normal_cos;
+    }
+    else {
+        refraction_normal = -refraction_normal;
+        std::mem::swap(&mut current_medium_refraction_component, &mut next_medium_refraction_component);
+    }
+
+    let refraction_component_ratio = current_medium_refraction_component / next_medium_refraction_component;
+    let criticalValue = 1.0 - refraction_component_ratio * refraction_component_ratio * (1.0 - incident_normal_cos * incident_normal_cos);
+
+    (refraction_component_ratio * incident_direction + (refraction_component_ratio * incident_normal_cos - criticalValue.sqrt()) * refraction_normal).normalize()
+}
+
 fn get_reflection_vector(incident_direction: &Vec3, normal: &Vec3) -> Vec3 {
     (incident_direction - 2.0 * incident_direction.dot(*normal) * normal).normalize()
 }
@@ -60,7 +106,21 @@ fn get_color_from_raycast(ray: &Ray, object_list: &Vec<Box<dyn Intersectable>>, 
                 let reflection_vector = get_reflection_vector(&ray.get_direction(), &normal);
                 hit_color += REFLECTION_DIM_FACTOR * get_color_from_raycast(&Ray::new(intersection_point + reflection_vector * math::NITRORAY_FLOAT_EPSILON, reflection_vector), object_list, light_list, depth + 1);
             },
-            MaterialType::ReflectRefract { refraction_component } => todo!(),
+            MaterialType::ReflectRefract { refraction_component } => {
+                let mut refraction_color = Vec3::splat(0.0);
+
+                let reflection_mix = compute_fresnel(&ray.get_direction(), &normal, refraction_component);
+
+                if reflection_mix < 1.0 {
+                    let refraction_direction = get_refraction_vector(&ray.get_direction(), &normal, refraction_component);
+                    refraction_color = get_color_from_raycast(&Ray::new(intersection_point + refraction_direction * math::NITRORAY_FLOAT_EPSILON, refraction_direction), object_list, light_list, depth + 1);
+                }
+
+                let reflection_direction = get_reflection_vector(&ray.get_direction(), &normal);
+                let reflection_color = get_color_from_raycast(&Ray::new(intersection_point + reflection_direction * math::NITRORAY_FLOAT_EPSILON, reflection_direction), object_list, light_list, depth + 1);
+
+                hit_color += reflection_color * reflection_mix + refraction_color * (1.0 - reflection_mix);
+            },
         };
         
         return hit_color;
@@ -104,9 +164,11 @@ pub fn run() {
     let purple_material = Material::new(Vec3::new(1.0, 0.0, 1.0), MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 });
     let yellow_material = Material::new(Vec3::new(1.0, 1.0, 0.0), MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 });
     let reflection_material = Material::new(Vec3::new(1.0, 1.0, 1.0), MaterialType::Reflect);
+    let refraction_material = Material::new(Vec3::new(1.0, 1.0, 1.0), MaterialType::ReflectRefract { refraction_component: 0.5 });
 
     let mut object_list: Vec<Box<dyn Intersectable>> = Vec::new();
     object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 1.0), 1.0, red_material)));
+    object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 0.0), 0.5, refraction_material)));
     object_list.push(Box::new(Sphere::new(Vec3::new(1.5, 0.0, 0.0), 1.0, green_material)));
     object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 3.0, 2.0), 1.0, blue_material)));
     object_list.push(Box::new(Sphere::new(Vec3::new(-2.0, 0.0, 1.0), 1.0, purple_material)));
