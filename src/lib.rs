@@ -100,6 +100,10 @@ fn get_color_from_raycast(ray: &Ray, object_list: &Vec<Box<dyn Intersectable>>, 
 
                         hit_color += diffuse * diffuse_component + specular * specular_component;
                     }
+                    else {
+                        //Add some ambient lighting
+                        hit_color += color_at_intersection * 0.1;
+                    }
                 }
             },
             MaterialType::Reflect => {
@@ -154,6 +158,7 @@ pub fn run() {
     let camera = Camera::new(Vec3::new(0.0, 0.0, -3.0), 0.0, 0.0, 90.0, aspect_ratio);
 
     let plane_model = Rc::new(Model::load_model("res/models/plane.gltf"));
+    let gem_model = Rc::new(Model::load_model("res/models/gem.gltf"));
 
     let mut light_list: Vec<Box<dyn Light>> = Vec::new();
     light_list.push(Box::new(DirectionalLight::new(Vec3::new(-1.0, -1.0, 1.0).normalize(), Vec3::new(1.0, 1.0, 1.0), 1.0)));
@@ -169,7 +174,7 @@ pub fn run() {
     let mut object_list: Vec<Box<dyn Intersectable>> = Vec::new();
     object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 1.0), 1.0, red_material)));
     object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 0.0), 0.5, refraction_material)));
-    object_list.push(Box::new(Sphere::new(Vec3::new(1.5, 0.0, 0.0), 1.0, green_material)));
+    //object_list.push(Box::new(Sphere::new(Vec3::new(1.5, 0.0, 0.0), 1.0, green_material)));
     object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 3.0, 2.0), 1.0, blue_material)));
     object_list.push(Box::new(Sphere::new(Vec3::new(-2.0, 0.0, 1.0), 1.0, purple_material)));
     object_list.push(Box::new(ModelObject::new(
@@ -181,6 +186,11 @@ pub fn run() {
         Transform3d::new(Vec3::new(-4.0, 0.0, 0.0), -90.0, -45.0, 0.0, Vec3::splat(2.0)), 
         reflection_material, 
         plane_model.clone()
+    )));
+    object_list.push(Box::new(ModelObject::new(
+        Transform3d::new(Vec3::new(2.0, 0.0, 0.5), 0.0, 0.0, 0.0, Vec3::splat(1.0)),
+        purple_material,
+        gem_model.clone()
     )));
 
     let field_of_view_component = f32::tan(camera.get_field_of_view() / 2.0);
