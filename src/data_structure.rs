@@ -8,8 +8,8 @@ pub(crate) enum OctreeNodeType<T> {
 }
 
 pub(crate) struct OctreeNode<T> {
-    axis_aligned_bounding_box: AxisAlignedBoundingBox,
-    octree_node_type: OctreeNodeType<T>
+    pub axis_aligned_bounding_box: AxisAlignedBoundingBox,
+    pub octree_node_type: OctreeNodeType<T>
 }
 
 impl<T> OctreeNode<T> {
@@ -35,11 +35,11 @@ pub(crate) struct Octree<T> {
 }
 
 impl<T> Octree<T> {
-    pub(crate) fn new(minimum_leaves: u32, maximum_depth: u32, root: OctreeNode<T>) -> Octree<T> {
+    pub(crate) fn new(minimum_leaves: u32, maximum_depth: u32, root: Rc<OctreeNode<T>>) -> Octree<T> {
         Self {
             minimum_leaves,
             maximum_depth,
-            root: Rc::new(root)
+            root
         }
     }
 

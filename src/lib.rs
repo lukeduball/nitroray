@@ -61,9 +61,9 @@ fn get_refraction_vector(incident_direction: &Vec3, normal: &Vec3, refraction_co
     }
 
     let refraction_component_ratio = current_medium_refraction_component / next_medium_refraction_component;
-    let criticalValue = 1.0 - refraction_component_ratio * refraction_component_ratio * (1.0 - incident_normal_cos * incident_normal_cos);
+    let critical_value = 1.0 - refraction_component_ratio * refraction_component_ratio * (1.0 - incident_normal_cos * incident_normal_cos);
 
-    (refraction_component_ratio * incident_direction + (refraction_component_ratio * incident_normal_cos - criticalValue.sqrt()) * refraction_normal).normalize()
+    (refraction_component_ratio * incident_direction + (refraction_component_ratio * incident_normal_cos - critical_value.sqrt()) * refraction_normal).normalize()
 }
 
 fn get_reflection_vector(incident_direction: &Vec3, normal: &Vec3) -> Vec3 {
