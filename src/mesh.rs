@@ -1,5 +1,5 @@
 use core::f32;
-use std::rc::Rc;
+use std::{collections::VecDeque, rc::Rc};
 
 use xenofrost::core::math::{Vec2, Vec3};
 
@@ -161,30 +161,62 @@ impl Mesh {
     }
 
     pub(crate) fn intersect(&self, local_ray: &Ray) -> IntersectionInfo {
-        let mut does_intersect = false;
-        let mut intersection_parameter = f32::INFINITY;
-        let mut face_index = None;
-
-        let (does_aabb_intersect, _) = self.bounding_octree.get_root_axis_aligned_bounding_box().intersect_ray(local_ray);
+        let (does_aabb_intersect, _ray_parameter) = self.bounding_octree.get_root_axis_aligned_bounding_box().intersect_ray(local_ray);
         
         if does_aabb_intersect {
-            for (index, face) in self.faces.iter().enumerate() {
-                let vertex1 = self.vertices[face.indices[0] as usize];
-                let vertex2 = self.vertices[face.indices[1] as usize];
-                let vertex3 = self.vertices[face.indices[2] as usize];
-                let intersection_info = Triangle::intersect_triangle(&local_ray, &vertex1, &vertex2, &vertex3);
-                if intersection_info.does_intersect && intersection_info.intersection_parameter < intersection_parameter {
-                    does_intersect = true;
-                    intersection_parameter = intersection_info.intersection_parameter;
-                    face_index = Some(FaceIndex {
-                        mesh_index: 0,
-                        face_index: index as u32
-                    });
+            let mut intersection_list = VecDeque::new();
+
+            intersection_list.push_back(self.bounding_octree.get_root());
+
+            let mut intersection_parameter = f32::INFINITY;
+
+            while !intersection_list.is_empty() {
+                let front_octree_node = intersection_list.pop_front().unwrap();
+                match &front_octree_node.octree_node_type {
+                    OctreeNodeType::OctreeLeaf { contents } => {
+                        let mut face_index = None;
+                        for face_idx in contents {
+                            let face = &self.faces[*face_idx as usize];
+                            let vertex1 = self.vertices[face.indices[0] as usize];
+                            let vertex2 = self.vertices[face.indices[1] as usize];
+                            let vertex3 = self.vertices[face.indices[2] as usize];
+                            let intersection_info = Triangle::intersect_triangle(&local_ray, &vertex1, &vertex2, &vertex3);
+                            if intersection_info.does_intersect && intersection_info.intersection_parameter < intersection_parameter {
+                                intersection_parameter = intersection_info.intersection_parameter;
+                                face_index = Some(FaceIndex {
+                                    mesh_index: 0,
+                                    face_index: *face_idx
+                                });
+                            }
+                        }
+
+                        if intersection_parameter != f32::INFINITY {
+                            return IntersectionInfo {does_intersect: true, intersection_parameter, mesh_info: face_index};
+                        }
+                    },
+                    OctreeNodeType::OctreeBranch { children } => {
+                        let mut new_nodes = Vec::new();
+                        for child_index in 0..8_u32 {
+                            if let Some(child_node) = &children[child_index as usize] {
+                                let (does_intersect, ray_parameter) = child_node.axis_aligned_bounding_box.intersect_ray(local_ray);
+
+                                if does_intersect {
+                                    new_nodes.push((Rc::clone(child_node), ray_parameter));
+                                }
+                            }
+                        }
+
+                        new_nodes.sort_by(|a, b| a.1.total_cmp(&b.1));
+
+                        for node in new_nodes {
+                            intersection_list.push_front(node.0);
+                        }
+                    },
                 }
             }
         }
 
-        IntersectionInfo { does_intersect, intersection_parameter, mesh_info: face_index }
+        IntersectionInfo { does_intersect: false, intersection_parameter: f32::INFINITY, mesh_info: None }
     }
 
     pub(crate) fn get_normals_of_face(&self, face_index: u32) -> Vec3 {

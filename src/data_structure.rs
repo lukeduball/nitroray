@@ -46,4 +46,8 @@ impl<T> Octree<T> {
     pub(crate) fn get_root_axis_aligned_bounding_box(&self) -> AxisAlignedBoundingBox {
         self.root.axis_aligned_bounding_box
     }
+
+    pub(crate) fn get_root(&self) -> Rc<OctreeNode<T>> {
+        self.root.clone()
+    }
 }
