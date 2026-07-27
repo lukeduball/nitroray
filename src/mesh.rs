@@ -115,8 +115,8 @@ impl Mesh {
 
             // The total combinations of the three bits of numbers 0 to 7 represent the 8 different regions in the octree
             let x_sign = -1 + (children_index & 0b001) as i32 * 2;
-            let y_sign = -1 + (children_index & 0b010) as i32 * 2;
-            let z_sign = -1 + (children_index & 0b100) as i32 * 2;
+            let y_sign = -1 + ((children_index & 0b010) >> 1) as i32 * 2;
+            let z_sign = -1 + ((children_index & 0b100) >> 2) as i32 * 2;
 
             let center = parent_center + Vec3::new(parent_half_distances.x * x_sign as f32 * 0.5, parent_half_distances.y * y_sign as f32 * 0.5, parent_half_distances.z * z_sign as f32 * 0.5);
             let axis_aligned_bounding_box = AxisAlignedBoundingBox::new(center, half_distances);

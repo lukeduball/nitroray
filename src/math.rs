@@ -176,7 +176,7 @@ impl AxisAlignedBoundingBox {
             return false;
         }
         //Z axis
-        if !Self::axis_test(edge21.y, edge21.x, transformed_vertex1.x, transformed_vertex1.y, transformed_vertex1.x, transformed_vertex3.y, edge21abs.y, self.half_distances.x, edge21abs.x, self.half_distances.y) {
+        if !Self::axis_test(edge21.y, edge21.x, transformed_vertex2.x, transformed_vertex2.y, transformed_vertex3.x, transformed_vertex3.y, edge21abs.y, self.half_distances.x, edge21abs.x, self.half_distances.y) {
             return false;
         }
 
@@ -191,7 +191,7 @@ impl AxisAlignedBoundingBox {
             return false;
         }
         //Z axis
-        if !Self::axis_test(edge32.y, edge32.x, transformed_vertex1.x, transformed_vertex1.y, transformed_vertex3.x, transformed_vertex3.y, edge32abs.y, self.half_distances.x, edge32abs.x, self.half_distances.y) { 
+        if !Self::axis_test(edge32.y, edge32.x, transformed_vertex1.x, transformed_vertex1.y, transformed_vertex2.x, transformed_vertex2.y, edge32abs.y, self.half_distances.x, edge32abs.x, self.half_distances.y) { 
             return false;
         }
         
@@ -206,7 +206,7 @@ impl AxisAlignedBoundingBox {
             return false;
         }
         //Z axis
-        if !Self::axis_test(edge13.y, edge13.x, transformed_vertex1.x, transformed_vertex1.y, transformed_vertex2.x, transformed_vertex2.y, edge13abs.y, self.half_distances.x, edge13abs.x, self.half_distances.y) {
+        if !Self::axis_test(edge13.y, edge13.x, transformed_vertex2.x, transformed_vertex2.y, transformed_vertex3.x, transformed_vertex3.y, edge13abs.y, self.half_distances.x, edge13abs.x, self.half_distances.y) {
             return false;
         }
 
@@ -241,7 +241,7 @@ impl AxisAlignedBoundingBox {
         //Projection of the box onto the axis
         let radius = abs_edge0 * box0 + abs_edge1 * box1;
 
-        //If the min point of the projected triangle is greator than the radius or max point is less than the radius of the projected box, they do not overlap in that axis
+        //If the min point of the projected triangle is greater than the radius or max point is less than the radius of the projected box, they do not overlap in that axis
         if min > radius || max < -radius
         {
             return false;
