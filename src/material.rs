@@ -1,17 +1,34 @@
+use std::rc::Rc;
+
+use image::Rgb32FImage;
 use xenofrost::core::math::Vec3;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(crate) struct Material {
     base_color: Vec3,
-    material_type: MaterialType
+    material_type: MaterialType,
+    texture: Option<Rc<Rgb32FImage>>
 }
 
 impl Material {
     pub(crate) fn new(base_color: Vec3, material_type: MaterialType) -> Self {
-        Material { 
+        Self { 
             base_color, 
-            material_type 
+            material_type,
+            texture: None 
         }
+    }
+
+    pub(crate) fn new_with_image(base_color: Vec3, material_type: MaterialType, texture: Rc<Rgb32FImage>) -> Self {
+        Self {
+            base_color,
+            material_type,
+            texture: Some(texture)
+        }
+    }
+
+    pub(crate) fn get_texture(&self) -> Option<Rc<Rgb32FImage>> {
+        self.texture.clone()
     }
 
     pub(crate) fn get_base_color(&self) -> Vec3 {

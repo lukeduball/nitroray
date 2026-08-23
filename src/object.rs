@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use xenofrost::core::math::{Mat4, Vec2, Vec3};
 
-use crate::{material::Material, math::Transform3d, model::Model, ray::Ray};
+use crate::{material::Material, math::Transform3d, model::Model, ray::Ray, image_loader::get_color_at_image_uv};
 
 pub(crate) struct FaceIndex {
     pub(crate) mesh_index: u32,
@@ -19,22 +19,22 @@ pub(crate) trait Intersectable {
     fn intersect(&self, ray: &Ray) -> IntersectionInfo;
     fn get_color_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Vec3;
     fn get_normal_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Vec3;
-    fn get_texture_coords_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Option<Vec2>;
-    fn get_material_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Material;
+    fn get_texture_coords_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Vec2;
+    fn get_material_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Rc<Material>;
 }
 
 pub(crate) struct ModelObject {
     transform: Transform3d,
-    material: Material,
+    material: Rc<Material>,
     model: Rc<Model>,
 }
 
 impl ModelObject {
-    pub(crate) fn new(transform: Transform3d, material: Material, model: Rc<Model>) -> Self {
+    pub(crate) fn new(transform: Transform3d, material: Rc<Material>, model: Rc<Model>) -> Self {
         Self {
             transform,
             material,
-            model
+            model,
         }
     }
 }
@@ -61,15 +61,31 @@ impl Intersectable for ModelObject {
         transformation_matrix.transform_vector3(local_normal).normalize()
     }
     
-    fn get_color_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Vec3 {
-        self.material.get_base_color()
+    fn get_color_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Vec3 {
+        match self.material.get_texture() {
+            Some(image) => {
+                let texture_coordinates = self.get_texture_coords_at_intersection(intersection_point, mesh_info);
+                get_color_at_image_uv(image.clone(), texture_coordinates.x, texture_coordinates.y)
+            },
+            None => {
+                self.material.get_base_color()
+            }
+        }
     }
     
-    fn get_texture_coords_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Option<Vec2> {
-        None
+    fn get_texture_coords_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Vec2 {
+        let mesh_face_indices = mesh_info.as_ref().unwrap();
+        let local_intersection_point = get_local_intersection(&self.transform, intersection_point);
+        self.model.get_uv_coordinates_from_mesh_face_point(mesh_face_indices.mesh_index, mesh_face_indices.face_index, &local_intersection_point)
     }
     
-    fn get_material_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Material {
-        self.material
+    fn get_material_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Rc<Material> {
+        self.material.clone()
     }
+}
+
+fn get_local_intersection(transform3d: &Transform3d, world_intersection_point: &Vec3) -> Vec3 {
+    let transformation_matrix = Mat4::from_scale_rotation_translation(transform3d.get_scale(), transform3d.get_rotation_quaternion(), transform3d.get_translation());
+    let inverse_transformation_matrix = transformation_matrix.inverse();
+    inverse_transformation_matrix.transform_point3(*world_intersection_point)
 }

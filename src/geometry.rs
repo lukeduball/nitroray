@@ -1,17 +1,18 @@
 use core::f32;
+use std::{f32::consts::PI, rc::Rc};
 
 use xenofrost::core::math::{Vec2, Vec3};
 
-use crate::{material::Material, math::are_floats_equal, object::{FaceIndex, Intersectable, IntersectionInfo}, ray::Ray};
+use crate::{image_loader::get_color_at_image_uv, material::Material, math::are_floats_equal, object::{FaceIndex, Intersectable, IntersectionInfo}, ray::Ray};
 
 pub(crate) struct Sphere {
     origin: Vec3,
     radius: f32,
-    material: Material
+    material: Rc<Material>
 }
 
 impl Sphere {
-    pub(crate) fn new(origin: Vec3, radius: f32, material: Material) -> Self {
+    pub(crate) fn new(origin: Vec3, radius: f32, material: Rc<Material>) -> Self {
         Self {
             origin,
             radius,
@@ -56,26 +57,39 @@ impl Intersectable for Sphere {
         normal
     }
     
-    fn get_texture_coords_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Option<Vec2> {
-        None
+    fn get_texture_coords_at_intersection(&self, intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Vec2 {
+        let normal = (intersection_point - self.origin).normalize();
+        
+        Vec2::new(
+            (1.0 + f32::atan2(normal.z, normal.x) / PI) * 0.5,
+            f32::acos(normal.y) / PI
+        )
     }
     
-    fn get_material_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Material {
-        self.material
+    fn get_material_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Rc<Material> {
+        self.material.clone()
     }
     
-    fn get_color_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Vec3 {
-        self.material.get_base_color()
+    fn get_color_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Vec3 {
+         match self.material.get_texture() {
+            Some(image) => {
+                let texture_coordinates = self.get_texture_coords_at_intersection(intersection_point, mesh_info);
+                get_color_at_image_uv(image.clone(), texture_coordinates.x, texture_coordinates.y)
+            },
+            None => {
+                self.material.get_base_color()
+            }
+        }
     }
 }
 
 pub(crate) struct Triangle {
     vertices: [Vec3; 3],
-    material: Material
+    material: Rc<Material>
 }
 
 impl Triangle {
-    pub(crate) fn new(vertex1: Vec3, vertex2: Vec3, vertex3: Vec3, material: Material) -> Self {
+    pub(crate) fn new(vertex1: Vec3, vertex2: Vec3, vertex3: Vec3, material: Rc<Material>) -> Self {
         Self {
             vertices: [vertex1, vertex2, vertex3],
             material
@@ -140,11 +154,27 @@ impl Intersectable for Triangle {
         self.material.get_base_color()
     }
     
-    fn get_texture_coords_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Option<Vec2> {
-        None
+    fn get_texture_coords_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Vec2 {
+        Vec2::new(0.0, 0.0)
     }
     
-    fn get_material_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Material {
-        self.material
+    fn get_material_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Rc<Material> {
+        self.material.clone()
     }
+}
+
+pub(crate) fn get_barycentric_coordinates(point: &Vec3, vertex1: &Vec3, vertex2: &Vec3, vertex3: &Vec3) -> Vec3 {
+    //Calculate the vectors from each vertex to the point
+    let vertex1_to_point = vertex1 - point;
+    let vertex2_to_point = vertex2 - point;
+    let vertex3_to_point = vertex3 - point;
+
+    //Calculate the area of the triangle
+    let inverse_area = 1.0 / (vertex1 - vertex2).cross(vertex1 - vertex3).length();
+    //Calculate the ratio that each of the sub-triangles created by the point takes up
+    let area1_ratio = vertex2_to_point.cross(vertex3_to_point).length() * inverse_area;
+    let area2_ratio = vertex3_to_point.cross(vertex1_to_point).length() * inverse_area;
+    let area3_ratio = vertex1_to_point.cross(vertex2_to_point).length() * inverse_area;
+
+    Vec3::new(area1_ratio, area2_ratio, area3_ratio)
 }

@@ -3,7 +3,7 @@ use std::{collections::VecDeque, rc::Rc};
 
 use xenofrost::core::math::{Vec2, Vec3};
 
-use crate::{data_structure::{Octree, OctreeNode, OctreeNodeType}, geometry::Triangle, math::AxisAlignedBoundingBox, object::{FaceIndex, IntersectionInfo}, ray::Ray};
+use crate::{data_structure::{Octree, OctreeNode, OctreeNodeType}, geometry::{Triangle, get_barycentric_coordinates}, math::AxisAlignedBoundingBox, object::{FaceIndex, IntersectionInfo}, ray::Ray};
 
 const MIN_OBJECTS: u32 = 4;
 const MAX_DEPTH: u32 = 5;
@@ -232,5 +232,16 @@ impl Mesh {
                 (vertex2 - vertex1).cross(vertex3 - vertex1)
             }
         }
+    }
+
+    pub(crate) fn get_uv_of_face_point(&self, face_index: u32, point: &Vec3) -> Vec2 {
+        let indices = self.faces[face_index as usize].indices;
+        let vertex1_texcoords = self.texture_coords[indices[0] as usize];
+        let vertex2_texcoords = self.texture_coords[indices[1] as usize];
+        let vertex3_texcoords = self.texture_coords[indices[2] as usize];
+
+        let barycentric_coordinates = get_barycentric_coordinates(point, &self.vertices[indices[0] as usize], &self.vertices[indices[1] as usize], &self.vertices[indices[2] as usize]);
+    
+        vertex1_texcoords * barycentric_coordinates.x + vertex2_texcoords * barycentric_coordinates.y + vertex3_texcoords * barycentric_coordinates.z
     }
 }

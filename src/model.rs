@@ -1,6 +1,6 @@
 use core::f32;
 
-use xenofrost::core::math::Vec3;
+use xenofrost::core::math::{Vec2, Vec3};
 
 use crate::{mesh::Mesh, object::{FaceIndex, IntersectionInfo}, ray::Ray};
 
@@ -48,5 +48,9 @@ impl Model {
 
     pub(crate) fn get_normals_from_mesh_face(&self, mesh_index: u32, face_index: u32) -> Vec3 {
         self.meshes[mesh_index as usize].get_normals_of_face(face_index)
+    }
+
+    pub(crate) fn get_uv_coordinates_from_mesh_face_point(&self, mesh_index: u32, face_index: u32, point: &Vec3) -> Vec2 {
+        self.meshes[mesh_index as usize].get_uv_of_face_point(face_index, point)
     }
 }

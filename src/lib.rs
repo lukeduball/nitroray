@@ -3,11 +3,12 @@ use std::rc::Rc;
 use image::{Rgb, RgbImage};
 use xenofrost::core::math::Vec3;
 
-use crate::{camera::Camera, geometry::Sphere, light::{DirectionalLight, Light}, material::{Material, MaterialType}, math::Transform3d, model::Model, object::{FaceIndex, Intersectable, ModelObject}, ray::Ray};
+use crate::{camera::Camera, geometry::Sphere, image_loader::ImageLoader, light::{DirectionalLight, Light}, material::{Material, MaterialType}, math::Transform3d, model::Model, object::{FaceIndex, Intersectable, ModelObject}, ray::Ray};
 
 mod camera;
 mod data_structure;
 mod geometry;
+mod image_loader;
 mod light;
 mod material;
 mod math;
@@ -155,6 +156,10 @@ pub fn run() {
     const HEIGHT: usize = 270;
     let mut framebuffer = vec![Vec3::new(0.0, 0.0, 0.0); WIDTH*HEIGHT];
 
+    let image_loader = ImageLoader::new();
+
+    let marble_floor_image = image_loader.load_image("res/images/marble_floor.png");
+
     let aspect_ratio = WIDTH as f32 / HEIGHT as f32;
     let camera = Camera::new(Vec3::new(0.0, 0.0, -3.0), 0.0, 0.0, 90.0, aspect_ratio);
 
@@ -164,33 +169,34 @@ pub fn run() {
     let mut light_list: Vec<Box<dyn Light>> = Vec::new();
     light_list.push(Box::new(DirectionalLight::new(Vec3::new(-1.0, -1.0, 1.0).normalize(), Vec3::new(1.0, 1.0, 1.0), 1.0)));
 
-    let red_material = Material::new(Vec3::new(1.0, 0.0, 0.0), MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 });
-    let green_material = Material::new(Vec3::new(0.0, 1.0, 0.0), MaterialType::Phong { diffuse_component: 0.5, specular_component: 0.5, power_component: 0.5 });
-    let blue_material = Material::new(Vec3::new(0.0, 0.0, 1.0), MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 });
-    let purple_material = Material::new(Vec3::new(1.0, 0.0, 1.0), MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 });
-    let yellow_material = Material::new(Vec3::new(1.0, 1.0, 0.0), MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 });
-    let reflection_material = Material::new(Vec3::new(1.0, 1.0, 1.0), MaterialType::Reflect);
-    let refraction_material = Material::new(Vec3::new(1.0, 1.0, 1.0), MaterialType::ReflectRefract { refraction_component: 0.5 });
+    let marble_floor_material = Rc::new(Material::new_with_image(Vec3::new(1.0, 1.0, 1.0), MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 }, marble_floor_image.clone()));
+    let red_material = Rc::new(Material::new(Vec3::new(1.0, 0.0, 0.0), MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 }));
+    let green_material = Rc::new(Material::new(Vec3::new(0.0, 1.0, 0.0), MaterialType::Phong { diffuse_component: 0.5, specular_component: 0.5, power_component: 0.5 }));
+    let blue_material = Rc::new(Material::new(Vec3::new(0.0, 0.0, 1.0), MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 }));
+    let purple_material = Rc::new(Material::new(Vec3::new(1.0, 0.0, 1.0), MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 }));
+    let yellow_material = Rc::new(Material::new(Vec3::new(1.0, 1.0, 0.0), MaterialType::Phong { diffuse_component: 1.0, specular_component: 0.0, power_component: 0.0 }));
+    let reflection_material = Rc::new(Material::new(Vec3::new(1.0, 1.0, 1.0), MaterialType::Reflect));
+    let refraction_material = Rc::new(Material::new(Vec3::new(1.0, 1.0, 1.0), MaterialType::ReflectRefract { refraction_component: 0.5 }));
 
     let mut object_list: Vec<Box<dyn Intersectable>> = Vec::new();
-    object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 1.0), 1.0, red_material)));
-    object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 0.0), 0.5, refraction_material)));
+    object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 1.0), 1.0, red_material.clone())));
+    object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 0.0), 0.5, refraction_material.clone())));
     //object_list.push(Box::new(Sphere::new(Vec3::new(1.5, 0.0, 0.0), 1.0, green_material)));
-    object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 3.0, 2.0), 1.0, blue_material)));
-    object_list.push(Box::new(Sphere::new(Vec3::new(-2.0, 0.0, 1.0), 1.0, purple_material)));
+    object_list.push(Box::new(Sphere::new(Vec3::new(0.0, 3.0, 2.0), 1.0, blue_material.clone())));
+    object_list.push(Box::new(Sphere::new(Vec3::new(-2.0, 0.0, 1.0), 1.0, marble_floor_material.clone())));
     object_list.push(Box::new(ModelObject::new(
         Transform3d::new(Vec3::new(0.0, -1.0, -2.0), 0.0, 0.0, 0.0, Vec3::splat(2.0)), 
-        yellow_material, 
+        marble_floor_material.clone(), 
         plane_model.clone()
     )));
     object_list.push(Box::new(ModelObject::new(
         Transform3d::new(Vec3::new(-4.0, 0.0, 0.0), -90.0, -45.0, 0.0, Vec3::splat(2.0)), 
-        reflection_material, 
+        reflection_material.clone(), 
         plane_model.clone()
     )));
     object_list.push(Box::new(ModelObject::new(
         Transform3d::new(Vec3::new(2.0, 0.0, 0.5), 0.0, 0.0, 0.0, Vec3::splat(1.0)),
-        purple_material,
+        purple_material.clone(),
         gem_model.clone()
     )));
 
