@@ -1,9 +1,7 @@
-use std::rc::Rc;
-
 use image::{Rgb, RgbImage};
 use xenofrost::core::math::Vec3;
 
-use crate::{camera::Camera, geometry::Sphere, image_loader::ImageLoader, light::{DirectionalLight, Light}, material::{Material, MaterialType}, math::Transform3d, model::Model, object::{FaceIndex, Intersectable, ModelObject}, ray::Ray, scene::Scene};
+use crate::{light::Light, material::MaterialType, object::{FaceIndex, Intersectable}, ray::Ray, scene::Scene};
 
 mod camera;
 mod data_structure;

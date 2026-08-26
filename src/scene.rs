@@ -1,6 +1,6 @@
 use std::{collections::HashMap, error::Error, fs::File, io::BufReader, rc::Rc};
 
-use image::{Rgb32FImage, RgbImage};
+use image::Rgb32FImage;
 use serde::Deserialize;
 use xenofrost::core::math::Vec3;
 
