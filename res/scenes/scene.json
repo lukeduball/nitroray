@@ -1,0 +1,137 @@
+{
+    "image_dimensions": [480, 270],
+    "materials": [
+        {
+            "identifier": "marble_floor",
+            "base_color": [0.0, 0.0, 0.0],
+            "material_type": {
+                "type": "Phong",
+                "diffuse_component": 1.0,
+                "specular_component": 0.0,
+                "power_component": 0.0
+            },
+            "texture": "marble_floor.png"
+        },
+        {
+            "identifier": "red",
+            "base_color": [1.0, 0.0, 0.0],
+            "material_type": {
+                "type": "Phong",
+                "diffuse_component": 1.0,
+                "specular_component": 0.0,
+                "power_component": 0.0
+            }
+        },
+        {
+            "identifier": "blue",
+            "base_color": [0.0, 0.0, 1.0],
+            "material_type": {
+                "type": "Phong",
+                "diffuse_component": 1.0,
+                "specular_component": 0.0,
+                "power_component": 0.0
+            }
+        },
+        {
+            "identifier": "purple",
+            "base_color": [1.0, 1.0, 0.0],
+            "material_type": {
+                "type": "Phong",
+                "diffuse_component": 1.0,
+                "specular_component": 0.0,
+                "power_component": 0.0
+            }
+        },
+        {
+            "identifier": "reflect",
+            "base_color": [1.0, 1.0, 1.0],
+            "material_type": {
+                "type": "Reflect"
+            }
+        },
+        {
+            "identifier": "refract",
+            "base_color": [1.0, 1.0, 1.0],
+            "material_type": {
+                "type": "ReflectRefract",
+                "refraction_component": 0.5
+            }
+        }
+    ],
+    "camera_info": {
+        "position": [0.0, 0.0, -3.0],
+        "yaw": 0.0,
+        "pitch": 0.0,
+        "field_of_view": 90.0
+    },
+    "objects": [
+        {
+            "type": "Sphere",
+            "origin": [0.0, 0.0, 1.0],
+            "radius": 1.0,
+            "material": "red"
+        },
+        {
+            "type": "Sphere",
+            "origin": [0.0, 0.0, 0.0],
+            "radius": 0.5,
+            "material": "refract"
+        },
+        {
+            "type": "Sphere",
+            "origin": [0.0, 3.0, 2.0],
+            "radius": 1.0,
+            "material": "blue"
+        },
+        {
+            "type": "Sphere",
+            "origin": [-2.0, 0.0, 1.0],
+            "radius": 1.0,
+            "material": "marble_floor"
+        },
+        {
+            "type": "Model",
+            "transform3d": {
+                "translation": [0.0, -1.0, -2.0],
+                "pitch": 0.0,
+                "yaw": 0.0,
+                "roll": 0.0,
+                "scale": [2.0, 2.0, 2.0]
+            },
+            "material": "marble_floor",
+            "model": "plane.gltf"
+        },
+        {
+            "type": "Model",
+            "transform3d": {
+                "translation": [-4.0, 0.0, 0.0],
+                "pitch": -90.0,
+                "yaw": -45.0,
+                "roll": 0.0,
+                "scale": [2.0, 2.0, 2.0]
+            },
+            "material": "reflect",
+            "model": "plane.gltf"
+        },
+        {
+            "type": "Model",
+            "transform3d": {
+                "translation": [2.0, 0.0, 0.5],
+                "pitch": 0.0,
+                "yaw": 0.0,
+                "roll": 0.0,
+                "scale": [1.0, 1.0, 1.0]
+            },
+            "material": "purple",
+            "model": "gem.gltf"
+        }
+    ],
+    "lights": [
+        {
+            "type": "DirectionalLight",
+            "direction": [-1.0, -1.0, 1.0],
+            "color": [1.0, 1.0, 1.0],
+            "intensity": 1.0  
+        }
+    ]
+}

@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use image::Rgb32FImage;
+use serde::Deserialize;
 use xenofrost::core::math::Vec3;
 
 #[derive(Clone)]
@@ -40,7 +41,8 @@ impl Material {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Deserialize)]
+#[serde(tag = "type")]
 pub(crate) enum MaterialType {
     Phong {
         diffuse_component: f32,
