@@ -1,11 +1,13 @@
 use std::mem::swap;
 
+use serde::Deserialize;
 use xenofrost::core::math::{EulerRot, Quat, Vec3};
 
 use crate::ray::Ray;
 
 pub(crate) const NITRORAY_FLOAT_EPSILON: f32 = 0.0001;
 
+#[derive(Deserialize)]
 pub(crate) struct Transform3d {
     translation: Vec3,
     pitch: f32,

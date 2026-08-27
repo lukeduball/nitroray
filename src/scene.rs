@@ -30,17 +30,8 @@ struct SphereParser {
 }
 
 #[derive(Deserialize)]
-struct Transform3dParser {
-    translation: [f32; 3],
-    pitch: f32,
-    yaw: f32,
-    roll: f32,
-    scale: [f32; 3]
-}
-
-#[derive(Deserialize)]
 struct ModelObjectParser {
-    transform3d: Transform3dParser,
+    transform3d: Transform3d,
     material: String,
     model: String
 }
@@ -62,16 +53,9 @@ struct MaterialParser {
 }
 
 #[derive(Deserialize)]
-struct DirectionalLightParser {
-    direction: [f32; 3],
-    color: [f32; 3],
-    intensity: f32
-}
-
-#[derive(Deserialize)]
 #[serde(tag = "type")]
 enum LightType {
-    DirectionalLight(DirectionalLightParser)
+    DirectionalLight(DirectionalLight)
 }
 
 #[derive(Deserialize)]
@@ -157,17 +141,9 @@ impl Scene {
                         model_ref
                     };
 
-                    let transform3d = Transform3d::new(
-                        Vec3::from_array(model_object.transform3d.translation), 
-                        model_object.transform3d.pitch, 
-                        model_object.transform3d.yaw, 
-                        model_object.transform3d.roll, 
-                        Vec3::from_array(model_object.transform3d.scale)
-                    );
-
                     let material = materials_hashmap.get(&model_object.material).unwrap().clone();
 
-                    Box::new(ModelObject::new(transform3d, material, model))
+                    Box::new(ModelObject::new(model_object.transform3d, material, model))
                 },
             };
 
@@ -178,12 +154,8 @@ impl Scene {
 
         for parsed_light in parsed_scene.lights {
             let light: Box<dyn Light> = match parsed_light {
-                LightType::DirectionalLight(directional_light_parser) => Box::new(
-                    DirectionalLight::new(
-                        Vec3::from_array(directional_light_parser.direction), 
-                        Vec3::from_array(directional_light_parser.color), 
-                        directional_light_parser.intensity
-                    )
+                LightType::DirectionalLight(directional_light) => Box::new(
+                    directional_light
                 ),
             };
 
