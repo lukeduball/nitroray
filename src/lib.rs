@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use image::{Rgb, RgbImage};
 use xenofrost::core::math::Vec3;
 
@@ -154,6 +156,8 @@ pub fn run() {
     let scene_result = Scene::load_scene("res/scenes/scene.json");
     match scene_result {
         Ok(scene) => {
+            let start = Instant::now();
+
             let mut framebuffer = vec![Vec3::new(0.0, 0.0, 0.0); scene.image_width as usize*scene.image_height as usize];
             let aspect_ratio = scene.image_width as f32 / scene.image_height as f32;
 
@@ -187,6 +191,10 @@ pub fn run() {
                     out_image.put_pixel(x as u32, y as u32, Rgb([red, green, blue]));
                 } 
             }
+
+            let duration = start.elapsed();
+
+            println!("Ray Tracing took {} ms", duration.as_millis());
 
             let _ = out_image.save("res/out.png");
         },
