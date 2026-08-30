@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use xenofrost::core::math::{Mat4, Vec2, Vec3};
 
-use crate::{material::Material, math::Transform3d, model::Model, ray::Ray, image_loader::get_color_at_image_uv};
+use crate::{material::Material, math::Transform3d, model::Model, ray::Ray};
 
 pub(crate) struct FaceIndex {
     pub(crate) mesh_index: u32,
@@ -62,15 +62,8 @@ impl Intersectable for ModelObject {
     }
     
     fn get_color_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Vec3 {
-        match self.material.get_texture() {
-            Some(image) => {
-                let texture_coordinates = self.get_texture_coords_at_intersection(intersection_point, mesh_info);
-                get_color_at_image_uv(image.clone(), texture_coordinates.x, texture_coordinates.y)
-            },
-            None => {
-                self.material.get_base_color()
-            }
-        }
+        let texture_coordinates = self.get_texture_coords_at_intersection(intersection_point, mesh_info);
+        self.material.get_color_at_uv(texture_coordinates)
     }
     
     fn get_texture_coords_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Vec2 {

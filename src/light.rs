@@ -14,16 +14,6 @@ pub struct DirectionalLight {
     intensity: f32
 }
 
-impl DirectionalLight {
-    pub fn new(direction: Vec3, color: Vec3, intensity: f32) -> Self {
-        Self {
-            direction,
-            color,
-            intensity
-        }
-    }
-}
-
 impl Light for DirectionalLight {
     fn get_light_direction_intensity_and_distance_parameter(&self, _intersection_point: Vec3) -> (Vec3, Vec3, f32) {
         let light_direction = self.direction;

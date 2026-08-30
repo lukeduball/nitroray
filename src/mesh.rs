@@ -235,6 +235,11 @@ impl Mesh {
     }
 
     pub(crate) fn get_uv_of_face_point(&self, face_index: u32, point: &Vec3) -> Vec2 {
+        // If the mesh has no texture coordinates return default texture coordinates
+        if self.texture_coords.is_empty() {
+            return Vec2::new(0.0, 0.0)
+        }
+
         let indices = self.faces[face_index as usize].indices;
         let vertex1_texcoords = self.texture_coords[indices[0] as usize];
         let vertex2_texcoords = self.texture_coords[indices[1] as usize];

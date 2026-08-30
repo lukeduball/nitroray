@@ -17,20 +17,6 @@ pub(crate) struct Transform3d {
 }
 
 impl Transform3d {
-    pub(crate) fn new(translation: Vec3, pitch: f32, yaw: f32, roll: f32, scale: Vec3) -> Self {
-        Self {
-            translation,
-            pitch,
-            yaw,
-            roll,
-            scale
-        }
-    }
-
-    pub(crate) fn from_translation(translation: Vec3) -> Self {
-        Self::new(translation, 0.0, 0.0, 0.0, Vec3::splat(1.0))
-    }
-
     pub(crate) fn get_translation(&self) -> Vec3 {
         self.translation
     }

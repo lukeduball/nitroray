@@ -3,7 +3,7 @@ use std::{f32::consts::PI, rc::Rc};
 
 use xenofrost::core::math::{Vec2, Vec3};
 
-use crate::{image_loader::get_color_at_image_uv, material::Material, math::are_floats_equal, object::{FaceIndex, Intersectable, IntersectionInfo}, ray::Ray};
+use crate::{material::Material, math::are_floats_equal, object::{FaceIndex, Intersectable, IntersectionInfo}, ray::Ray};
 
 pub(crate) struct Sphere {
     origin: Vec3,
@@ -71,15 +71,8 @@ impl Intersectable for Sphere {
     }
     
     fn get_color_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Vec3 {
-         match self.material.get_texture() {
-            Some(image) => {
-                let texture_coordinates = self.get_texture_coords_at_intersection(intersection_point, mesh_info);
-                get_color_at_image_uv(image.clone(), texture_coordinates.x, texture_coordinates.y)
-            },
-            None => {
-                self.material.get_base_color()
-            }
-        }
+        let texture_coordinates = self.get_texture_coords_at_intersection(intersection_point, mesh_info);
+        self.material.get_color_at_uv(texture_coordinates)
     }
 }
 

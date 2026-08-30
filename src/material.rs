@@ -2,7 +2,9 @@ use std::rc::Rc;
 
 use image::Rgb32FImage;
 use serde::Deserialize;
-use xenofrost::core::math::Vec3;
+use xenofrost::core::math::{Vec2, Vec3};
+
+use crate::image_loader::get_color_at_image_uv;
 
 #[derive(Clone)]
 pub(crate) struct Material {
@@ -28,12 +30,19 @@ impl Material {
         }
     }
 
-    pub(crate) fn get_texture(&self) -> Option<Rc<Rgb32FImage>> {
-        self.texture.clone()
-    }
-
     pub(crate) fn get_base_color(&self) -> Vec3 {
         self.base_color
+    }
+
+    pub(crate) fn get_color_at_uv(&self, texture_coords: Vec2) -> Vec3 {
+        match self.texture.clone() {
+            Some(image) => {
+                get_color_at_image_uv(image.clone(), texture_coords.x, texture_coords.y)
+            },
+            None => {
+                self.base_color
+            }
+        }
     }
 
     pub(crate) fn get_material_type(&self) -> MaterialType {
