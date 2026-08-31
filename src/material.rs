@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use image::Rgb32FImage;
 use serde::Deserialize;
@@ -10,7 +10,7 @@ use crate::image_loader::get_color_at_image_uv;
 pub(crate) struct Material {
     base_color: Vec3,
     material_type: MaterialType,
-    texture: Option<Rc<Rgb32FImage>>
+    texture: Option<Arc<Rgb32FImage>>
 }
 
 impl Material {
@@ -22,7 +22,7 @@ impl Material {
         }
     }
 
-    pub(crate) fn new_with_image(base_color: Vec3, material_type: MaterialType, texture: Rc<Rgb32FImage>) -> Self {
+    pub(crate) fn new_with_image(base_color: Vec3, material_type: MaterialType, texture: Arc<Rgb32FImage>) -> Self {
         Self {
             base_color,
             material_type,

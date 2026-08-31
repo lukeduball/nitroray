@@ -1,9 +1,9 @@
-use std::rc::Rc;
+use std::{sync::Arc};
 
 use crate::{math::AxisAlignedBoundingBox};
 
 pub(crate) enum OctreeNodeType<T> {
-    OctreeBranch { children: [Option<Rc<OctreeNode<T>>>; 8]},
+    OctreeBranch { children: [Option<Arc<OctreeNode<T>>>; 8]},
     OctreeLeaf { contents: Vec<T> },
 }
 
@@ -31,11 +31,11 @@ impl<T> OctreeNode<T> {
 pub(crate) struct Octree<T> {
     minimum_leaves: u32,
     maximum_depth: u32,
-    root: Rc<OctreeNode<T>>
+    root: Arc<OctreeNode<T>>
 }
 
 impl<T> Octree<T> {
-    pub(crate) fn new(minimum_leaves: u32, maximum_depth: u32, root: Rc<OctreeNode<T>>) -> Octree<T> {
+    pub(crate) fn new(minimum_leaves: u32, maximum_depth: u32, root: Arc<OctreeNode<T>>) -> Octree<T> {
         Self {
             minimum_leaves,
             maximum_depth,
@@ -47,7 +47,7 @@ impl<T> Octree<T> {
         self.root.axis_aligned_bounding_box
     }
 
-    pub(crate) fn get_root(&self) -> Rc<OctreeNode<T>> {
+    pub(crate) fn get_root(&self) -> Arc<OctreeNode<T>> {
         self.root.clone()
     }
 }

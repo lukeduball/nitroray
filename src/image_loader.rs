@@ -1,10 +1,10 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use image::{ImageReader, Rgb32FImage};
 use xenofrost::core::math::Vec3;
 
 pub(crate) struct ImageLoader {
-    missing_image: Rc<Rgb32FImage>
+    missing_image: Arc<Rgb32FImage>
 }
 
 impl ImageLoader {
@@ -13,17 +13,17 @@ impl ImageLoader {
         let missing_image = missing_image_stream.decode().unwrap();
 
         Self {
-            missing_image: Rc::new(missing_image.into_rgb32f())
+            missing_image: Arc::new(missing_image.into_rgb32f())
         }
     }
 
-    pub(crate) fn load_image(&self, path: &str) -> Rc<Rgb32FImage> {
+    pub(crate) fn load_image(&self, path: &str) -> Arc<Rgb32FImage> {
         let image_result = ImageReader::open(path);
         match image_result {
             Ok(image) => {
                 let decoded_image_result = image.decode();
                 match decoded_image_result {
-                    Ok(decoded_image) => return Rc::new(decoded_image.into_rgb32f()),
+                    Ok(decoded_image) => return Arc::new(decoded_image.into_rgb32f()),
                     Err(e) => eprintln!("Failed to decode image: {}", e),
                 };
             },
@@ -34,7 +34,7 @@ impl ImageLoader {
     }
 }
 
-pub(crate) fn get_color_at_image_uv(image: Rc<Rgb32FImage>, u: f32, v: f32) -> Vec3 {
+pub(crate) fn get_color_at_image_uv(image: Arc<Rgb32FImage>, u: f32, v: f32) -> Vec3 {
     let x_coordinate = (image.width() as f32 * u) as u32;
     let y_coordinate = (image.height() as f32 * v) as u32;
     

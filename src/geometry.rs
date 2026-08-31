@@ -1,5 +1,5 @@
 use core::f32;
-use std::{f32::consts::PI, rc::Rc};
+use std::{f32::consts::PI, sync::Arc};
 
 use xenofrost::core::math::{Vec2, Vec3};
 
@@ -8,11 +8,11 @@ use crate::{material::Material, math::are_floats_equal, object::{FaceIndex, Inte
 pub(crate) struct Sphere {
     origin: Vec3,
     radius: f32,
-    material: Rc<Material>
+    material: Arc<Material>
 }
 
 impl Sphere {
-    pub(crate) fn new(origin: Vec3, radius: f32, material: Rc<Material>) -> Self {
+    pub(crate) fn new(origin: Vec3, radius: f32, material: Arc<Material>) -> Self {
         Self {
             origin,
             radius,
@@ -66,7 +66,7 @@ impl Intersectable for Sphere {
         )
     }
     
-    fn get_material_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Rc<Material> {
+    fn get_material_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Arc<Material> {
         self.material.clone()
     }
     
@@ -78,11 +78,11 @@ impl Intersectable for Sphere {
 
 pub(crate) struct Triangle {
     vertices: [Vec3; 3],
-    material: Rc<Material>
+    material: Arc<Material>
 }
 
 impl Triangle {
-    pub(crate) fn new(vertex1: Vec3, vertex2: Vec3, vertex3: Vec3, material: Rc<Material>) -> Self {
+    pub(crate) fn new(vertex1: Vec3, vertex2: Vec3, vertex3: Vec3, material: Arc<Material>) -> Self {
         Self {
             vertices: [vertex1, vertex2, vertex3],
             material
@@ -151,7 +151,7 @@ impl Intersectable for Triangle {
         Vec2::new(0.0, 0.0)
     }
     
-    fn get_material_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Rc<Material> {
+    fn get_material_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Arc<Material> {
         self.material.clone()
     }
 }

@@ -1,5 +1,5 @@
 use core::f32;
-use std::{collections::VecDeque, rc::Rc};
+use std::{collections::VecDeque, sync::Arc};
 
 use xenofrost::core::math::{Vec2, Vec3};
 
@@ -94,18 +94,18 @@ impl Mesh {
     fn construct_octree(faces: &Vec<Face>, vertices: &Vec<Vec3>, mesh_aabb: AxisAlignedBoundingBox) -> Octree<u32> {
         //The amount of faces is less than or equal to the minimum number of objects required to create a leaf in the octree so create a leaf node as the root node of the octree
         let root_node = if faces.len() as u32 <= MIN_OBJECTS {
-            Rc::new(OctreeNode::new_leaf_node(mesh_aabb, (0..faces.len() as u32).collect()))
+            Arc::new(OctreeNode::new_leaf_node(mesh_aabb, (0..faces.len() as u32).collect()))
         } else {
             let root_branch_node = OctreeNode::new_branch_node(mesh_aabb);
             //Populate the children of the octree
-            let rc_root_branch_node = Self::generate_octree_children(Rc::new(root_branch_node), &(0..faces.len() as u32).collect(), faces, vertices, 0);
+            let rc_root_branch_node = Self::generate_octree_children(Arc::new(root_branch_node), &(0..faces.len() as u32).collect(), faces, vertices, 0);
             rc_root_branch_node
         };
 
         Octree::new(MIN_OBJECTS, MAX_DEPTH, root_node)
     }
 
-    fn generate_octree_children(mut octree_node: Rc<OctreeNode<u32>>, faces_indices: &Vec<u32>, faces: &Vec<Face>, vertices: &Vec<Vec3>, depth: u32) -> Rc<OctreeNode<u32>> {
+    fn generate_octree_children(mut octree_node: Arc<OctreeNode<u32>>, faces_indices: &Vec<u32>, faces: &Vec<Face>, vertices: &Vec<Vec3>, depth: u32) -> Arc<OctreeNode<u32>> {
         let parent_center = octree_node.axis_aligned_bounding_box.get_center();
         let parent_half_distances = octree_node.axis_aligned_bounding_box.get_half_distances();
 
@@ -139,9 +139,9 @@ impl Mesh {
             if overlapping_faces.len() as u32 <= MIN_OBJECTS || depth == MAX_DEPTH
             {
                 let leaf_node = OctreeNode::new_leaf_node(axis_aligned_bounding_box, overlapping_faces.clone());
-                let mutable_octree_node = Rc::get_mut(&mut octree_node).unwrap();
+                let mutable_octree_node = Arc::get_mut(&mut octree_node).unwrap();
                 if let OctreeNodeType::OctreeBranch { children } = &mut mutable_octree_node.octree_node_type {
-                    children[children_index as usize] = Some(Rc::new(leaf_node));
+                    children[children_index as usize] = Some(Arc::new(leaf_node));
                 }
                 continue;
             }
@@ -149,8 +149,8 @@ impl Mesh {
             else
             {
                 let branch_node = OctreeNode::new_branch_node(axis_aligned_bounding_box);
-                let mutable_octree_node = Rc::get_mut(&mut octree_node).unwrap();
-                let rc_branch_node = Self::generate_octree_children(Rc::new(branch_node), &overlapping_faces, faces, vertices, depth+1);
+                let mutable_octree_node = Arc::get_mut(&mut octree_node).unwrap();
+                let rc_branch_node = Self::generate_octree_children(Arc::new(branch_node), &overlapping_faces, faces, vertices, depth+1);
                 if let OctreeNodeType::OctreeBranch { children } = &mut mutable_octree_node.octree_node_type {
                     children[children_index as usize] = Some(rc_branch_node);
                 }
@@ -201,7 +201,7 @@ impl Mesh {
                                 let (does_intersect, ray_parameter) = child_node.axis_aligned_bounding_box.intersect_ray(local_ray);
 
                                 if does_intersect {
-                                    new_nodes.push((Rc::clone(child_node), ray_parameter));
+                                    new_nodes.push((Arc::clone(child_node), ray_parameter));
                                 }
                             }
                         }

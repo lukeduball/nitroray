@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{sync::Arc};
 
 use xenofrost::core::math::{Mat4, Vec2, Vec3};
 
@@ -20,17 +20,17 @@ pub(crate) trait Intersectable {
     fn get_color_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Vec3;
     fn get_normal_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Vec3;
     fn get_texture_coords_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Vec2;
-    fn get_material_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Rc<Material>;
+    fn get_material_at_intersection(&self, intersection_point: &Vec3, mesh_info: &Option<FaceIndex>) -> Arc<Material>;
 }
 
 pub(crate) struct ModelObject {
     transform: Transform3d,
-    material: Rc<Material>,
-    model: Rc<Model>,
+    material: Arc<Material>,
+    model: Arc<Model>,
 }
 
 impl ModelObject {
-    pub(crate) fn new(transform: Transform3d, material: Rc<Material>, model: Rc<Model>) -> Self {
+    pub(crate) fn new(transform: Transform3d, material: Arc<Material>, model: Arc<Model>) -> Self {
         Self {
             transform,
             material,
@@ -72,7 +72,7 @@ impl Intersectable for ModelObject {
         self.model.get_uv_coordinates_from_mesh_face_point(mesh_face_indices.mesh_index, mesh_face_indices.face_index, &local_intersection_point)
     }
     
-    fn get_material_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Rc<Material> {
+    fn get_material_at_intersection(&self, _intersection_point: &Vec3, _mesh_info: &Option<FaceIndex>) -> Arc<Material> {
         self.material.clone()
     }
 }

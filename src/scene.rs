@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error::Error, fs::File, io::BufReader, rc::Rc};
+use std::{collections::HashMap, error::Error, fs::File, io::BufReader, sync::Arc};
 
 use image::Rgb32FImage;
 use serde::Deserialize;
@@ -71,8 +71,8 @@ pub(crate) struct Scene {
     pub image_width: u32,
     pub image_height: u32,
     pub camera: Camera,
-    pub object_list: Vec<Box<dyn Intersectable>>,
-    pub light_list: Vec<Box<dyn Light>>
+    pub object_list: Vec<Arc<dyn Intersectable + Sync + Send>>,
+    pub light_list: Vec<Arc<dyn Light + Sync + Send>>
 }
 
 impl Scene {
@@ -92,8 +92,8 @@ impl Scene {
         );
 
         let image_loader = ImageLoader::new();
-        let mut materials_hashmap: HashMap<String, Rc<Material>> = HashMap::new();
-        let mut images_hashmap: HashMap<String, Rc<Rgb32FImage>> = HashMap::new();
+        let mut materials_hashmap: HashMap<String, Arc<Material>> = HashMap::new();
+        let mut images_hashmap: HashMap<String, Arc<Rgb32FImage>> = HashMap::new();
 
         for parsed_material in parsed_scene.materials {
             let material = match parsed_material.texture {
@@ -105,19 +105,19 @@ impl Scene {
                         images_hashmap.insert(texture_name, image.clone());
                         image
                     };
-                    Rc::new(Material::new_with_image(Vec3::from_array(parsed_material.base_color), parsed_material.material_type, texture))
+                    Arc::new(Material::new_with_image(Vec3::from_array(parsed_material.base_color), parsed_material.material_type, texture))
                 },
-                None => Rc::new(Material::new(Vec3::from_array(parsed_material.base_color), parsed_material.material_type)),
+                None => Arc::new(Material::new(Vec3::from_array(parsed_material.base_color), parsed_material.material_type)),
             };
             materials_hashmap.insert(parsed_material.identifier, material);
         }
 
-        let mut model_hashmap: HashMap<String, Rc<Model>> = HashMap::new();
+        let mut model_hashmap: HashMap<String, Arc<Model>> = HashMap::new();
         let mut object_list = Vec::new();
 
         for parsed_object in parsed_scene.objects {
-            let object: Box<dyn Intersectable> = match parsed_object {
-                ObjectType::Triangle(triangle_parser) => Box::new(
+            let object: Arc<dyn Intersectable + Sync + Send> = match parsed_object {
+                ObjectType::Triangle(triangle_parser) => Arc::new(
                     Triangle::new(
                         Vec3::from_array(triangle_parser.vertex1), 
                         Vec3::from_array(triangle_parser.vertex2), 
@@ -125,7 +125,7 @@ impl Scene {
                         materials_hashmap.get(&triangle_parser.material).unwrap().clone()
                     )
                 ),
-                ObjectType::Sphere(sphere_parser) => Box::new(
+                ObjectType::Sphere(sphere_parser) => Arc::new(
                     Sphere::new(
                         Vec3::from_array(sphere_parser.origin),
                         sphere_parser.radius,
@@ -136,14 +136,14 @@ impl Scene {
                     let model = if model_hashmap.contains_key(&model_object.model) {
                         model_hashmap.get(&model_object.model).unwrap().clone()
                     } else {
-                        let model_ref = Rc::new(Model::load_model(format!("res/models/{}", model_object.model).as_str()));
+                        let model_ref = Arc::new(Model::load_model(format!("res/models/{}", model_object.model).as_str()));
                         model_hashmap.insert(model_object.model, model_ref.clone());
                         model_ref
                     };
 
                     let material = materials_hashmap.get(&model_object.material).unwrap().clone();
 
-                    Box::new(ModelObject::new(model_object.transform3d, material, model))
+                    Arc::new(ModelObject::new(model_object.transform3d, material, model))
                 },
             };
 
@@ -153,8 +153,8 @@ impl Scene {
         let mut light_list = Vec::new();
 
         for parsed_light in parsed_scene.lights {
-            let light: Box<dyn Light> = match parsed_light {
-                LightType::DirectionalLight(directional_light) => Box::new(
+            let light: Arc<dyn Light + Sync + Send> = match parsed_light {
+                LightType::DirectionalLight(directional_light) => Arc::new(
                     directional_light
                 ),
             };

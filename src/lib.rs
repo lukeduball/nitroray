@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{sync::Arc, thread, time::Instant};
 
 use image::{Rgb, RgbImage};
 use xenofrost::core::math::Vec3;
@@ -72,7 +72,7 @@ fn get_reflection_vector(incident_direction: &Vec3, normal: &Vec3) -> Vec3 {
     (incident_direction - 2.0 * incident_direction.dot(*normal) * normal).normalize()
 }
 
-fn get_color_from_raycast(ray: &Ray, object_list: &Vec<Box<dyn Intersectable>>, light_list: &Vec<Box<dyn Light>>, depth: u32) -> Vec3 {
+fn get_color_from_raycast(ray: &Ray, object_list: &Vec<Arc<dyn Intersectable + Sync + Send>>, light_list: &Vec<Arc<dyn Light + Sync + Send>>, depth: u32) -> Vec3 {
     let mut hit_color = Vec3::new(0.0, 0.0, 0.0);
 
     if depth > MAX_RAY_DEPTH {
@@ -136,9 +136,9 @@ fn get_color_from_raycast(ray: &Ray, object_list: &Vec<Box<dyn Intersectable>>, 
     BACKGROUND_COLOR
 }
 
-fn find_ray_intersection_with_scene<'a>(ray: &'a Ray, object_list: &'a Vec<Box<dyn Intersectable>>) -> (Option<&'a Box<dyn Intersectable>>, f32, Option<FaceIndex>) {
+fn find_ray_intersection_with_scene<'a>(ray: &'a Ray, object_list: &'a Vec<Arc<dyn Intersectable + Sync + Send>>) -> (Option<&'a Arc<dyn Intersectable + Sync + Send>>, f32, Option<FaceIndex>) {
     let mut min_distance_parameter = f32::INFINITY;
-    let mut collision_object: Option<&Box<dyn Intersectable>> = None;
+    let mut collision_object: Option<&Arc<dyn Intersectable + Sync + Send>> = None;
     let mut mesh_info = None;
     for object in object_list {
         let result = object.intersect(ray);
@@ -152,6 +152,9 @@ fn find_ray_intersection_with_scene<'a>(ray: &'a Ray, object_list: &'a Vec<Box<d
     (collision_object, min_distance_parameter, mesh_info)
 }
 
+struct SendPtr(*mut Vec3);
+unsafe impl Send for SendPtr {}
+
 pub fn run() {
     let scene_result = Scene::load_scene("res/scenes/scene.json");
     match scene_result {
@@ -160,30 +163,65 @@ pub fn run() {
 
             let mut framebuffer = vec![Vec3::new(0.0, 0.0, 0.0); scene.image_width as usize*scene.image_height as usize];
             let aspect_ratio = scene.image_width as f32 / scene.image_height as f32;
-
             let field_of_view_component = f32::tan(scene.camera.get_field_of_view() / 2.0);
 
-            for x in 0..scene.image_width {
-                for y in 0..scene.image_height {
-                    //pixel screen gets the center of each pixel and divides to put it in normalized coordinates between 0 and 1
-                    let pixel_screen_x = (x as f32 + 0.5) / scene.image_width as f32;
-                    let pixel_screen_y = (y as f32 + 0.5) / scene.image_height as f32;
-                    let pixel_camera_x = (2.0 * pixel_screen_x - 1.0) * aspect_ratio * field_of_view_component;
-                    let pixel_camera_y = (1.0 - 2.0 * pixel_screen_y) * field_of_view_component;
-                    let pixel_coordinate = Vec3::new(pixel_camera_x, pixel_camera_y, 1.0);
-                    let world_coordinate = scene.camera.convert_view_space_to_world_space(pixel_coordinate);
-                    let ray_direction = (world_coordinate - scene.camera.get_origin()).normalize();
-                    let ray = Ray::new(world_coordinate, ray_direction);
+            let scene_resource = Arc::new(scene);
 
-                    framebuffer[x as usize + y as usize * scene.image_width as usize] = get_color_from_raycast(&ray, &scene.object_list, &scene.light_list, 0);
-                }
+            match thread::available_parallelism() {
+                Ok(cores) => {
+                    let num_threads = cores.get();
+                    println!("Number of available cores: {}", num_threads);
+
+                    let workgroup_width = scene_resource.image_width / 4 as u32;
+                    let workgroup_height = scene_resource.image_height / 3 as u32;
+
+                    for i in 0..num_threads {
+                        thread::scope(|s| {
+                            let base_ptr = framebuffer.as_mut_ptr();
+                            let wrapper = SendPtr(base_ptr);
+
+                            let scene_resource_clone = scene_resource.clone();
+                            
+                            s.spawn(move || {
+                                let raw_pointer = wrapper;
+
+                                let x_modifier = i % 4;
+                                let y_modifier = i / 4;
+                                for x in 0..workgroup_width {
+                                    let frame_x = x_modifier as u32 * workgroup_width + x;
+                                    for y in 0..workgroup_height{
+                                        let frame_y = y_modifier as u32 * workgroup_height + y;
+
+                                        if frame_x < scene_resource_clone.image_width && frame_y < scene_resource_clone.image_height {
+                                            //pixel screen gets the center of each pixel and divides to put it in normalized coordinates between 0 and 1
+                                            let pixel_screen_x = (frame_x as f32 + 0.5) / scene_resource_clone.image_width as f32;
+                                            let pixel_screen_y = (frame_y as f32 + 0.5) / scene_resource_clone.image_height as f32;
+                                            let pixel_camera_x = (2.0 * pixel_screen_x - 1.0) * aspect_ratio * field_of_view_component;
+                                            let pixel_camera_y = (1.0 - 2.0 * pixel_screen_y) * field_of_view_component;
+                                            let pixel_coordinate = Vec3::new(pixel_camera_x, pixel_camera_y, 1.0);
+                                            let world_coordinate = scene_resource_clone.camera.convert_view_space_to_world_space(pixel_coordinate);
+                                            let ray_direction = (world_coordinate - scene_resource_clone.camera.get_origin()).normalize();
+                                            let ray = Ray::new(world_coordinate, ray_direction);
+
+                                            unsafe {
+                                                (*raw_pointer.0.offset(frame_x as isize + frame_y as isize * scene_resource_clone.image_width as isize)) = get_color_from_raycast(&ray, &scene_resource_clone.object_list, &scene_resource_clone.light_list, 0);
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        });
+                    }
+                },
+                Err(_) => {
+                    eprintln!("Unable to get number of cores!")
+                },
             }
 
-
-            let mut out_image = RgbImage::new(scene.image_width, scene.image_height as u32);
-            for x in 0..scene.image_width {
-                for y in 0..scene.image_height {
-                    let index = x + y*scene.image_width;
+            let mut out_image = RgbImage::new(scene_resource.image_width, scene_resource.image_height as u32);
+            for x in 0..scene_resource.image_width {
+                for y in 0..scene_resource.image_height {
+                    let index = x + y*scene_resource.image_width;
                     let pixel = framebuffer[index as usize] * 255.0;
                     let red = pixel.x as u8;
                     let green = pixel.y as u8;
